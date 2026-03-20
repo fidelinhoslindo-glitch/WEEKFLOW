@@ -1,0 +1,277 @@
+import { useState, useRef, useEffect } from 'react'
+import { useApp } from '../context/AppContext'
+
+const SYSTEM_PROMPT = `You are WeekFlow's AI assistant. You help users manage their weekly schedule.
+
+When a user asks to create tasks, respond ONLY with valid JSON:
+{
+  "action": "create_tasks",
+  "tasks": [
+    {
+      "title": "Task name",
+      "category": "Work|Gym|Study|Rest|Other",
+      "days": ["Monday","Tuesday"],
+      "time": "HH:MM",
+      "duration": 60,
+      "priority": "low|medium|high",
+      "notes": ""
+    }
+  ],
+  "message": "Short confirmation in the same language as the user"
+}
+
+For general questions respond ONLY with:
+{
+  "action": "chat",
+  "message": "Your response here"
+}
+
+Rules:
+- If day not specified, pick logical day(s)
+- Default times: gym=07:00, work=09:00, study=19:00, meeting=10:00
+- Duration: gym=60, meeting=30, study=90, work=60
+- Respond in the SAME language the user wrote in
+- NEVER add text outside the JSON`
+
+const QUICK_PROMPTS = [
+  { label: '🏋️ Add gym 3x/week', text: 'Add gym Monday, Wednesday, Friday at 7am' },
+  { label: '📚 Study daily', text: 'Study every weekday at 8pm for 1 hour' },
+  { label: '📅 Team meeting', text: 'Team meeting Tuesday at 10am high priority' },
+  { label: '📊 My stats', text: "What's my completion rate this week?" },
+]
+
+const CAT_STYLE = {
+  Work:  'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300',
+  Gym:   'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300',
+  Study: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300',
+  Rest:  'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300',
+  Other: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300',
+}
+
+export default function AIChat({ onClose }) {
+  const { addTasks, pushToast, tasks, completionRate } = useApp()
+  const [messages, setMessages] = useState([])
+  const [input,   setInput]   = useState('')
+  const [loading, setLoading] = useState(false)
+  const [preview, setPreview] = useState(null)
+  const bottomRef = useRef(null)
+  const inputRef  = useRef(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, preview, loading])
+
+  // Keyboard: Escape closes
+  useEffect(() => {
+    const fn = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', fn)
+    return () => window.removeEventListener('keydown', fn)
+  }, [onClose])
+
+  const send = async (text) => {
+    const msg = (text || input).trim()
+    if (!msg || loading) return
+    setInput('')
+    setPreview(null)
+    setMessages(prev => [...prev, { role: 'user', text: msg }])
+    setLoading(true)
+
+    try {
+      const ctx = `User has ${tasks.length} tasks, ${completionRate}% completion rate.`
+      const history = messages.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.raw || m.text }))
+
+      const res  = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer gsk_weekflow_placeholder_replace_with_real_key',
+        },
+        body: JSON.stringify({
+          model: 'llama3-8b-8192',
+          max_tokens: 1000,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT + '\n\nContext: ' + ctx },
+            ...history,
+            { role: 'user', content: msg },
+          ],
+        }),
+      })
+      const data = await res.json()
+      const raw  = data.choices?.[0]?.message?.content || ''
+
+      let parsed
+      try { parsed = JSON.parse(raw.replace(/```json|```/g, '').trim()) }
+      catch { parsed = { action: 'chat', message: raw || 'Sorry, try rephrasing.' } }
+
+      setMessages(prev => [...prev, { role: 'assistant', text: parsed.message, raw, parsed }])
+      if (parsed.action === 'create_tasks' && parsed.tasks?.length > 0) setPreview(parsed)
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', text: '⚠️ Connection error. Check your internet and try again.', raw: '', parsed: null }])
+    }
+    setLoading(false)
+  }
+
+  const confirmTasks = () => {
+    if (!preview?.tasks) return
+    const flat = preview.tasks.flatMap(t => t.days.map(day => ({ ...t, day, days: undefined })))
+    addTasks(flat)
+    pushToast(`✅ ${flat.length} task${flat.length > 1 ? 's' : ''} added to your planner!`, 'success')
+    setPreview(null)
+    setMessages(prev => [...prev, { role: 'assistant', text: `Done! Added ${flat.length} task${flat.length > 1 ? 's' : ''} to your week. 🎉`, raw: '', parsed: null }])
+  }
+
+  const isEmpty = messages.length === 0
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4 bg-slate-950/70 backdrop-blur-sm">
+      <div className="relative w-full sm:max-w-lg flex flex-col bg-white dark:bg-slate-900 sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+        style={{ height: 'min(680px, 96vh)' }}>
+
+        {/* ── Header ── */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/30">
+            <span className="material-symbols-outlined text-white text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-black text-sm leading-tight">WeekFlow AI</h3>
+            <p className="text-[11px] text-slate-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block animate-pulse" />
+              Powered by Claude
+            </p>
+          </div>
+          <button onClick={onClose}
+            className="w-8 h-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+
+        {/* ── Messages area ── */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {/* Empty state — quick prompts */}
+          {isEmpty && (
+            <div className="flex flex-col items-center justify-center h-full px-6 py-8 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center mb-5">
+                <span className="material-symbols-outlined text-3xl text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
+              </div>
+              <h4 className="font-black text-base mb-1">What can I help you with?</h4>
+              <p className="text-slate-400 text-sm mb-6">Describe your tasks in natural language and I'll add them to your planner.</p>
+              <div className="grid grid-cols-2 gap-2 w-full">
+                {QUICK_PROMPTS.map((q, i) => (
+                  <button key={i} onClick={() => send(q.text)}
+                    className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-primary/5 hover:border-primary/30 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 text-left transition-all">
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Messages */}
+          {!isEmpty && (
+            <div className="px-4 py-5 space-y-4">
+              {messages.map((msg, i) => (
+                <div key={i} className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {msg.role === 'assistant' && (
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="material-symbols-outlined text-white text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
+                    </div>
+                  )}
+                  <div className={`max-w-[82%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                    msg.role === 'user'
+                      ? 'bg-primary text-white rounded-br-sm'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-sm'
+                  }`}>
+                    {msg.text}
+                  </div>
+                  {msg.role === 'user' && (
+                    <div className="w-7 h-7 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center shrink-0 mt-0.5 text-primary font-black text-xs">
+                      U
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Typing indicator */}
+              {loading && (
+                <div className="flex gap-2.5 justify-start">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-white text-xs animate-spin">refresh</span>
+                  </div>
+                  <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-1">
+                    {[0,1,2].map(i => (
+                      <span key={i} className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: `${i*0.12}s` }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Task preview */}
+              {preview && (
+                <div className="rounded-2xl border-2 border-primary/25 overflow-hidden">
+                  <div className="px-4 py-3 bg-primary/8 dark:bg-primary/15 border-b border-primary/15 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-sm">add_task</span>
+                    <p className="text-sm font-black text-primary">
+                      {preview.tasks.flatMap(t => t.days).length} task(s) ready to add
+                    </p>
+                  </div>
+                  <div className="p-3 space-y-2 max-h-44 overflow-y-auto">
+                    {preview.tasks.map((task, i) => (
+                      <div key={i} className={`rounded-xl p-3 border text-xs ${CAT_STYLE[task.category] || CAT_STYLE.Other}`}>
+                        <p className="font-black text-sm mb-1.5">{task.title}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {task.days.map(d => (
+                            <span key={d} className="px-2 py-0.5 bg-white/60 dark:bg-black/20 rounded-md font-bold">{d.slice(0,3)}</span>
+                          ))}
+                          <span className="px-2 py-0.5 bg-white/60 dark:bg-black/20 rounded-md">⏰ {task.time}</span>
+                          <span className="px-2 py-0.5 bg-white/60 dark:bg-black/20 rounded-md">⏱ {task.duration}m</span>
+                          <span className="px-2 py-0.5 bg-white/60 dark:bg-black/20 rounded-md capitalize">{task.category}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 p-3 border-t border-primary/15">
+                    <button onClick={() => setPreview(null)}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      Cancel
+                    </button>
+                    <button onClick={confirmTasks}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold bg-primary text-white hover:opacity-90 transition-all shadow-md shadow-primary/20 flex items-center justify-center gap-1.5">
+                      <span className="material-symbols-outlined text-xs">add</span>
+                      Add to Planner
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div ref={bottomRef} />
+            </div>
+          )}
+        </div>
+
+        {/* ── Input bar ── */}
+        <div className="shrink-0 border-t border-slate-100 dark:border-slate-800 px-4 py-3">
+          <div className="flex gap-2 items-center bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-primary/30 transition-all">
+            <input
+              ref={inputRef}
+              className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-slate-400 dark:text-slate-100"
+              placeholder="Add gym every Mon, Wed, Fri at 7am…"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+            />
+            <button onClick={() => send()} disabled={!input.trim() || loading}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all shrink-0 ${
+                input.trim() && !loading
+                  ? 'bg-primary text-white hover:opacity-90 shadow-md shadow-primary/30'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
+              }`}>
+              <span className="material-symbols-outlined text-sm">send</span>
+            </button>
+          </div>
+          <p className="text-center text-[10px] text-slate-300 dark:text-slate-700 mt-1.5">
+            Powered by Anthropic Claude · Press ESC to close
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}

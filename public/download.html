@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WeekFlow — Download</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #6467f2;
+      --primary-dark: #4f52e8;
+      --bg: #0a0b1a;
+      --bg2: #0f1022;
+      --card: #13152a;
+      --border: #1e2140;
+      --text: #f1f5f9;
+      --muted: #64748b;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; }
+    .fill { font-variation-settings: 'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24; }
+
+    /* NAV */
+    nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(20px); background: rgba(10,11,26,0.85); border-bottom: 1px solid var(--border); padding: 0 5%; }
+    .nav-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 72px; }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-icon { width: 38px; height: 38px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+    .logo-text { font-size: 22px; font-weight: 900; color: var(--text); }
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta { background: var(--primary); color: white; padding: 10px 22px; border-radius: 10px; font-weight: 700; font-size: 14px; text-decoration: none; transition: all .2s; }
+    .nav-cta:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+    /* HERO */
+    .hero { padding: 100px 5% 80px; text-align: center; position: relative; overflow: hidden; }
+    .hero::before { content:''; position:absolute; inset:0; background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(100,103,242,.15), transparent); pointer-events:none; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(100,103,242,.15); border: 1px solid rgba(100,103,242,.3); color: var(--primary); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 6px 14px; border-radius: 100px; margin-bottom: 28px; }
+    .hero-badge span { width: 6px; height: 6px; background: var(--primary); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+    h1 { font-size: clamp(40px,6vw,80px); font-weight: 900; line-height: 1.05; letter-spacing: -.03em; margin-bottom: 24px; }
+    h1 em { font-style: normal; background: linear-gradient(135deg, var(--primary), #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero-sub { color: var(--muted); font-size: clamp(16px,2vw,20px); max-width: 560px; margin: 0 auto 48px; line-height: 1.65; }
+
+    /* DOWNLOAD BUTTONS */
+    .dl-grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-bottom: 64px; }
+    .dl-btn { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1.5px solid var(--border); border-radius: 16px; padding: 16px 28px; text-decoration: none; color: var(--text); transition: all .25s; min-width: 220px; }
+    .dl-btn:hover { border-color: var(--primary); background: rgba(100,103,242,.08); transform: translateY(-3px); box-shadow: 0 20px 60px rgba(100,103,242,.2); }
+    .dl-btn.primary { background: var(--primary); border-color: var(--primary); }
+    .dl-btn.primary:hover { background: var(--primary-dark); }
+    .dl-icon { font-size: 32px; flex-shrink: 0; }
+    .dl-info { text-align: left; }
+    .dl-label { font-size: 11px; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+    .dl-name { font-size: 16px; font-weight: 800; margin-top: 2px; }
+    .dl-size { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 2px; }
+
+    /* MOCKUP */
+    .mockup-wrap { position: relative; max-width: 960px; margin: 0 auto; }
+    .mockup-glow { position: absolute; inset: -40px; background: radial-gradient(ellipse 70% 50% at 50% 50%, rgba(100,103,242,.25), transparent); pointer-events: none; z-index: 0; }
+    .mockup { position: relative; z-index: 1; background: var(--card); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; box-shadow: 0 40px 120px rgba(0,0,0,.6); }
+    .mockup-bar { background: #0d0f20; padding: 14px 20px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .mockup-content { display: grid; grid-template-columns: 220px 1fr; min-height: 480px; }
+    .mock-sidebar { background: #0d0f20; border-right: 1px solid var(--border); padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; }
+    .mock-nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: default; }
+    .mock-nav-item.active { background: rgba(100,103,242,.15); color: var(--primary); }
+    .mock-nav-item .material-symbols-outlined { font-size: 18px; }
+    .mock-main { padding: 28px; }
+    .mock-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .mock-title { font-size: 26px; font-weight: 900; }
+    .mock-subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .mock-btn { background: var(--primary); color: white; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; border: none; cursor: default; }
+    .mock-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+    .mock-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+    .mock-card-label { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .mock-card-val { font-size: 28px; font-weight: 900; margin-top: 6px; color: var(--primary); }
+    .mock-tasks { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+    .mock-task { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .mock-task:last-child { border: none; }
+    .mock-tag { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
+
+    /* FEATURES */
+    .features { padding: 100px 5%; max-width: 1200px; margin: 0 auto; }
+    .section-label { color: var(--primary); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 12px; }
+    .section-title { font-size: clamp(28px,4vw,48px); font-weight: 900; letter-spacing: -.02em; margin-bottom: 16px; }
+    .section-sub { color: var(--muted); font-size: 18px; max-width: 540px; line-height: 1.6; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 60px; }
+    .feat-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 28px; transition: all .25s; }
+    .feat-card:hover { border-color: var(--primary); transform: translateY(-4px); box-shadow: 0 20px 60px rgba(100,103,242,.15); }
+    .feat-icon { width: 50px; height: 50px; background: rgba(100,103,242,.15); border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+    .feat-icon .material-symbols-outlined { font-size: 26px; color: var(--primary); }
+    .feat-title { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+    .feat-desc { color: var(--muted); font-size: 14px; line-height: 1.65; }
+
+    /* PLATFORMS */
+    .platforms { padding: 80px 5%; background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .platforms-inner { max-width: 900px; margin: 0 auto; text-align: center; }
+    .platforms-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-top: 48px; }
+    .platform-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 28px 20px; text-align: center; }
+    .platform-icon { font-size: 40px; margin-bottom: 12px; }
+    .platform-name { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+    .platform-desc { color: var(--muted); font-size: 12px; }
+    .platform-badge { display: inline-block; background: rgba(100,103,242,.2); color: var(--primary); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 100px; margin-top: 10px; }
+
+    /* CTA */
+    .cta { padding: 120px 5%; text-align: center; background: var(--bg); }
+    .cta-card { max-width: 720px; margin: 0 auto; background: linear-gradient(135deg, rgba(100,103,242,.15), rgba(139,92,246,.1)); border: 1px solid rgba(100,103,242,.3); border-radius: 28px; padding: 64px 48px; position: relative; overflow: hidden; }
+    .cta-card::before { content:''; position:absolute; top:-60px; right:-60px; width:200px; height:200px; background:radial-gradient(circle, rgba(100,103,242,.3), transparent 70%); }
+    .cta h2 { font-size: clamp(28px,4vw,48px); font-weight: 900; letter-spacing: -.02em; margin-bottom: 16px; }
+    .cta p { color: var(--muted); font-size: 18px; margin-bottom: 40px; }
+
+    /* FOOTER */
+    footer { background: var(--bg2); border-top: 1px solid var(--border); padding: 40px 5%; text-align: center; }
+    footer p { color: var(--muted); font-size: 14px; }
+
+    @media(max-width:768px) {
+      .nav-links { display: none; }
+      .mockup-content { grid-template-columns: 1fr; }
+      .mock-sidebar { display: none; }
+      .mock-grid { grid-template-columns: repeat(2,1fr); }
+      .cta-card { padding: 40px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="logo">
+      <div class="logo-icon">
+        <span class="material-symbols-outlined fill" style="color:white;font-size:22px;">calendar_view_week</span>
+      </div>
+      <span class="logo-text">WeekFlow</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#platforms">Platforms</a>
+      <a href="#download">Download</a>
+    </div>
+    <a href="/app" class="nav-cta">Open Web App</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="download">
+  <div class="hero-badge">
+    <span></span>
+    Version 2.0 — Now Available
+  </div>
+  <h1>Organize your week,<br/><em>find your flow.</em></h1>
+  <p class="hero-sub">The all-in-one weekly planner with smart calendar, AI scheduling, social circles and Apple Watch-style timers. Available on every device.</p>
+
+  <div class="dl-grid">
+    <!-- Windows -->
+    <a href="weekflow-setup.exe" class="dl-btn primary" id="dl-windows">
+      <span class="dl-icon">🪟</span>
+      <div class="dl-info">
+        <div class="dl-label">Download for</div>
+        <div class="dl-name">Windows</div>
+        <div class="dl-size">v2.0 · 45 MB · .exe installer</div>
+      </div>
+    </a>
+    <!-- macOS -->
+    <a href="weekflow.dmg" class="dl-btn" id="dl-mac">
+      <span class="dl-icon">🍎</span>
+      <div class="dl-info">
+        <div class="dl-label">Download for</div>
+        <div class="dl-name">macOS</div>
+        <div class="dl-size">v2.0 · 38 MB · .dmg</div>
+      </div>
+    </a>
+    <!-- Linux -->
+    <a href="weekflow.AppImage" class="dl-btn" id="dl-linux">
+      <span class="dl-icon">🐧</span>
+      <div class="dl-info">
+        <div class="dl-label">Download for</div>
+        <div class="dl-name">Linux</div>
+        <div class="dl-size">v2.0 · 52 MB · AppImage</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Mobile badges -->
+  <div style="display:flex;gap:12px;justify-content:center;margin-bottom:16px;">
+    <a href="#" style="display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);padding:10px 18px;border-radius:12px;text-decoration:none;color:var(--text);font-size:13px;font-weight:700;">
+      📱 App Store <span style="color:var(--muted);font-weight:500;">Coming Soon</span>
+    </a>
+    <a href="#" style="display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);padding:10px 18px;border-radius:12px;text-decoration:none;color:var(--text);font-size:13px;font-weight:700;">
+      🤖 Google Play <span style="color:var(--muted);font-weight:500;">Coming Soon</span>
+    </a>
+  </div>
+  <p style="color:var(--muted);font-size:13px;">or <a href="/app" style="color:var(--primary);font-weight:600;text-decoration:none;">use the web app →</a> · no download needed</p>
+
+  <!-- App mockup -->
+  <div class="mockup-wrap" style="margin-top:72px;">
+    <div class="mockup-glow"></div>
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="dot" style="background:#ff5f57;"></div>
+        <div class="dot" style="background:#ffbd2e;"></div>
+        <div class="dot" style="background:#28c840;"></div>
+        <div style="flex:1;text-align:center;">
+          <span style="font-size:12px;color:var(--muted);font-weight:500;">WeekFlow 2.0</span>
+        </div>
+      </div>
+      <div class="mockup-content">
+        <div class="mock-sidebar">
+          <div class="mock-nav-item active">
+            <span class="material-symbols-outlined">dashboard</span> Dashboard
+          </div>
+          <div class="mock-nav-item">
+            <span class="material-symbols-outlined">calendar_today</span> Planner
+          </div>
+          <div class="mock-nav-item">
+            <span class="material-symbols-outlined">auto_awesome</span> Smart Cal
+          </div>
+          <div class="mock-nav-item">
+            <span class="material-symbols-outlined">hub</span> FlowCircle
+          </div>
+          <div class="mock-nav-item">
+            <span class="material-symbols-outlined">timer</span> Timer
+          </div>
+          <div class="mock-nav-item">
+            <span class="material-symbols-outlined">sticky_note_2</span> Notes
+          </div>
+          <div class="mock-nav-item">
+            <span class="material-symbols-outlined">bar_chart</span> Analytics
+          </div>
+        </div>
+        <div class="mock-main">
+          <div class="mock-header">
+            <div>
+              <div class="mock-title">Good morning, Alex. 👋</div>
+              <div class="mock-subtitle">Ready for your flow?</div>
+            </div>
+            <button class="mock-btn">+ Add Task</button>
+          </div>
+          <div class="mock-grid">
+            <div class="mock-card">
+              <div class="mock-card-label">Completion</div>
+              <div class="mock-card-val">78%</div>
+            </div>
+            <div class="mock-card">
+              <div class="mock-card-label">Total Tasks</div>
+              <div class="mock-card-val">42</div>
+            </div>
+            <div class="mock-card">
+              <div class="mock-card-label">Focus Score</div>
+              <div class="mock-card-val">85</div>
+            </div>
+            <div class="mock-card">
+              <div class="mock-card-label">Streak</div>
+              <div class="mock-card-val" style="color:#10b981;">5d</div>
+            </div>
+          </div>
+          <div class="mock-tasks">
+            <div style="font-size:14px;font-weight:800;margin-bottom:12px;">Today's Tasks</div>
+            <div class="mock-task">
+              <div class="mock-tag" style="background:rgba(100,103,242,.2);color:var(--primary);">Work</div>
+              <span style="font-size:13px;font-weight:600;">Deep Work Block</span>
+              <span style="margin-left:auto;font-size:11px;color:var(--muted);">09:00</span>
+            </div>
+            <div class="mock-task">
+              <div class="mock-tag" style="background:rgba(16,185,129,.2);color:#10b981;">Gym</div>
+              <span style="font-size:13px;font-weight:600;">Morning Workout 💪</span>
+              <span style="margin-left:auto;font-size:11px;color:var(--muted);">07:00</span>
+            </div>
+            <div class="mock-task">
+              <div class="mock-tag" style="background:rgba(59,130,246,.2);color:#3b82f6;">Study</div>
+              <span style="font-size:13px;font-weight:600;">Study React Patterns</span>
+              <span style="margin-left:auto;font-size:11px;color:var(--muted);">19:00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <p class="section-label">What's inside</p>
+  <h2 class="section-title">Everything you need to own your week</h2>
+  <p class="section-sub">WeekFlow brings together planning, focus, social coordination and AI — in one beautiful app.</p>
+
+  <div class="features-grid">
+    <div class="feat-card">
+      <div class="feat-icon"><span class="material-symbols-outlined">auto_awesome</span></div>
+      <h3 class="feat-title">Smart Calendar</h3>
+      <p class="feat-desc">Learns your habits automatically. Detects recurring patterns, removes holiday conflicts and suggests routines based on your behavior.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><span class="material-symbols-outlined fill" style="font-variation-settings:'FILL' 1">smart_toy</span></div>
+      <h3 class="feat-title">AI Scheduling</h3>
+      <p class="feat-desc">Tell the AI what you want in plain text. "Add gym Mon, Wed, Fri at 7am" — and it schedules everything instantly.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><span class="material-symbols-outlined">hub</span></div>
+      <h3 class="feat-title">FlowCircle</h3>
+      <p class="feat-desc">The social ecosystem. Plan together with your partner, family, friends or team in beautiful visual circles.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><span class="material-symbols-outlined">timer</span></div>
+      <h3 class="feat-title">Apple Watch Timer</h3>
+      <p class="feat-desc">Beautiful animated ring timers inspired by Apple's Activity rings. Multiple concurrent timers with custom colors and sounds.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><span class="material-symbols-outlined">sticky_note_2</span></div>
+      <h3 class="feat-title">Notes & Ideas</h3>
+      <p class="feat-desc">Capture notes, ideas, goals and todo lists with color-coded cards. Full editor with pin, filter and search.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><span class="material-symbols-outlined">notifications_active</span></div>
+      <h3 class="feat-title">Real Notifications</h3>
+      <p class="feat-desc">Native push notifications alert you 5 minutes before every task, even when the app is minimized.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PLATFORMS -->
+<section class="platforms" id="platforms">
+  <div class="platforms-inner">
+    <p class="section-label" style="text-align:center;">Available everywhere</p>
+    <h2 class="section-title" style="text-align:center;">One account. Every device.</h2>
+    <p style="color:var(--muted);font-size:17px;margin-bottom:0;text-align:center;">Your data syncs in real-time across all your devices via Supabase cloud.</p>
+
+    <div class="platforms-grid">
+      <div class="platform-card">
+        <div class="platform-icon">🪟</div>
+        <div class="platform-name">Windows</div>
+        <div class="platform-desc">Full native app via Tauri. Lightning fast.</div>
+        <div class="platform-badge">Available Now</div>
+      </div>
+      <div class="platform-card">
+        <div class="platform-icon">🍎</div>
+        <div class="platform-name">macOS</div>
+        <div class="platform-desc">Native .dmg for Intel & Apple Silicon.</div>
+        <div class="platform-badge">Available Now</div>
+      </div>
+      <div class="platform-card">
+        <div class="platform-icon">🌐</div>
+        <div class="platform-name">Web App</div>
+        <div class="platform-desc">Works in any browser. No install needed.</div>
+        <div class="platform-badge">Available Now</div>
+      </div>
+      <div class="platform-card">
+        <div class="platform-icon">📱</div>
+        <div class="platform-name">iOS</div>
+        <div class="platform-desc">Native iPhone & iPad app.</div>
+        <div class="platform-badge" style="background:rgba(245,158,11,.2);color:#f59e0b;">Coming Soon</div>
+      </div>
+      <div class="platform-card">
+        <div class="platform-icon">🤖</div>
+        <div class="platform-name">Android</div>
+        <div class="platform-desc">Full-featured Android app.</div>
+        <div class="platform-badge" style="background:rgba(245,158,11,.2);color:#f59e0b;">Coming Soon</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <div class="cta-card">
+    <h2>Ready to own your week?</h2>
+    <p>Join thousands planning smarter with WeekFlow. Free forever on web.</p>
+    <div class="dl-grid" style="margin-bottom:20px;">
+      <a href="weekflow-setup.exe" class="dl-btn primary">
+        <span class="dl-icon">🪟</span>
+        <div class="dl-info">
+          <div class="dl-label">Download for</div>
+          <div class="dl-name">Windows</div>
+        </div>
+      </a>
+      <a href="weekflow.dmg" class="dl-btn">
+        <span class="dl-icon">🍎</span>
+        <div class="dl-info">
+          <div class="dl-label">Download for</div>
+          <div class="dl-name">macOS</div>
+        </div>
+      </a>
+    </div>
+    <a href="/app" style="color:var(--primary);font-size:15px;font-weight:600;text-decoration:none;">or use the web app for free →</a>
+  </div>
+</section>
+
+<footer>
+  <p>© 2026 WeekFlow · Built with ❤️ · <a href="#" style="color:var(--primary);text-decoration:none;">Privacy</a> · <a href="#" style="color:var(--primary);text-decoration:none;">Terms</a></p>
+</footer>
+
+<script>
+  // Auto-detect OS and highlight the right download
+  const ua = navigator.userAgent
+  if (ua.includes('Mac')) document.getElementById('dl-mac')?.classList.add('primary')
+  else if (ua.includes('Linux')) document.getElementById('dl-linux')?.classList.add('primary')
+  // Windows is already primary by default
+</script>
+</body>
+</html>

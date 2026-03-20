@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+  /* Prevent horizontal scroll on mobile */
+  overflow-x: hidden;
+}
+
+/* Scrollbar hide */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(100,103,242,0.2); border-radius: 10px; }
+
+/* PWA safe area for bottom nav */
+.safe-area-inset-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* Material icons fill */
+.fill-icon { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+/* Confetti animation */
+@keyframes progress {
+  0% { width: 0% } 50% { width: 80% } 100% { width: 100% }
+}
+
+/* Ring progress for pomodoro */
+.ring-progress {
+  background: conic-gradient(from 0deg, #6467f2 0% 65%, #e2e8f0 65% 100%);
+}
+
+/* Mobile touch improvements */
+@media (max-width: 1024px) {
+  /* Prevent text size adjust on mobile */
+  html { -webkit-text-size-adjust: 100%; }
+
+  /* Better tap targets */
+  button { min-height: 36px; }
+
+  /* Full-width pages on mobile */
+  .flex-1 { min-width: 0; }
+}
+
+/* Print styles */
+@media print {
+  .no-print { display: none !important; }
+  body { background-color: white !important; }
+}
