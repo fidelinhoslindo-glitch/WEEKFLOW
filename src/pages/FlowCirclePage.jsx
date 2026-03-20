@@ -480,15 +480,6 @@ export default function FlowCirclePage() {
                 {/* INVITE */}
                 {activeTab==='invite'&&(
                   <div className="space-y-5 max-w-lg">
-                    {!isSupabaseConfigured()&&(
-                      <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl text-sm">
-                        <span className="material-symbols-outlined text-amber-500 text-sm mt-0.5">info</span>
-                        <div className="text-amber-700 dark:text-amber-300">
-                          <p className="font-bold">Using shareable links</p>
-                          <p className="text-xs mt-1">Connect Supabase in Settings → Cloud Sync for automatic email invites and real-time sync.</p>
-                        </div>
-                      </div>
-                    )}
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
                       <h4 className="font-black mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary text-sm">person_add</span>
