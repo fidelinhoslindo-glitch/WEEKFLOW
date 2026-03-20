@@ -86,7 +86,7 @@ export default function AIChat({ onClose }) {
           'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'llama3-8b-8192',
+          model: 'llama-3.3-70b-versatile',
           max_tokens: 1000,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT + '\n\nContext: ' + ctx },
@@ -96,6 +96,7 @@ export default function AIChat({ onClose }) {
         }),
       })
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error?.message || res.statusText)
       const raw  = data.choices?.[0]?.message?.content || ''
 
       let parsed
@@ -104,8 +105,8 @@ export default function AIChat({ onClose }) {
 
       setMessages(prev => [...prev, { role: 'assistant', text: parsed.message, raw, parsed }])
       if (parsed.action === 'create_tasks' && parsed.tasks?.length > 0) setPreview(parsed)
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', text: '⚠️ Connection error. Check your internet and try again.', raw: '', parsed: null }])
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'assistant', text: `⚠️ ${err.message || 'Connection error. Check your internet and try again.'}`, raw: '', parsed: null }])
     }
     setLoading(false)
   }
