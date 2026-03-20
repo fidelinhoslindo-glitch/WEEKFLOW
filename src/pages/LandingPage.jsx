@@ -172,7 +172,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
-            <div className="flex items-center gap-2.5">
+            <button onClick={() => navigate('landing')} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
               <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect width="36" height="36" rx="10" fill="#6467f2"/>
                 <rect x="7" y="8" width="4" height="20" rx="2" fill="white"/>
@@ -181,7 +181,7 @@ export default function LandingPage() {
                 <rect x="25" y="8" width="4" height="20" rx="2" fill="white"/>
               </svg>
               <span className="text-xl font-black tracking-tight">WeekFlow</span>
-            </div>
+            </button>
 
             {/* Desktop nav */}
             <div className="hidden md:flex items-center gap-8">
