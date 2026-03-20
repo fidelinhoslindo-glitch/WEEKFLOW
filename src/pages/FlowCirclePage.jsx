@@ -115,6 +115,59 @@ function CreateModal({ onClose, onCreate }) {
   )
 }
 
+function EventCard({ ev, onDelete, onPin }) {
+  const [expanded, setExpanded] = useState(false)
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden group hover:shadow-md transition-shadow">
+      {/* Cover image */}
+      {ev.image && (
+        <div className="relative h-36 overflow-hidden cursor-pointer" onClick={()=>setExpanded(x=>!x)}>
+          <img src={ev.image} alt="" className="w-full h-full object-cover"/>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"/>
+          <span className="absolute bottom-2 left-3 text-white font-black text-base drop-shadow">{ev.emoji||'📅'} {ev.title}</span>
+        </div>
+      )}
+      <div className="flex items-start gap-3 p-4">
+        {/* Color bar */}
+        <div className="w-1 self-stretch rounded-full shrink-0 mt-0.5" style={{backgroundColor:ev.color||'#6467f2',minHeight:32}}/>
+        {/* Emoji (if no image) */}
+        {!ev.image && (
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
+            style={{backgroundColor:(ev.color||'#6467f2')+'22'}}>
+            {ev.emoji||'📅'}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          {!ev.image && <p className="font-black text-sm">{ev.title}</p>}
+          <p className="text-xs text-slate-400 mt-0.5">
+            {ev.date} · {ev.time} · {ev.duration}min
+            {ev.createdBy && <span className="ml-1">· by {ev.createdBy}</span>}
+          </p>
+          {ev.note && (
+            <p className={`text-xs text-slate-500 mt-1.5 leading-relaxed ${!expanded&&'line-clamp-2'}`}>{ev.note}</p>
+          )}
+          {ev.note && ev.note.length > 80 && (
+            <button onClick={()=>setExpanded(x=>!x)} className="text-[10px] text-primary font-semibold mt-0.5">
+              {expanded?'Show less':'Read more'}
+            </button>
+          )}
+        </div>
+        {/* Actions */}
+        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <button onClick={()=>onPin(ev.id)}
+            className={`p-1.5 rounded-lg transition-all ${ev.pinned?'text-amber-400 bg-amber-50 dark:bg-amber-900/20':'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400'}`}>
+            <span className="material-symbols-outlined text-sm" style={ev.pinned?{fontVariationSettings:"'FILL' 1"}:{}}>push_pin</span>
+          </button>
+          <button onClick={()=>onDelete(ev.id)}
+            className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-slate-300 hover:text-red-400 transition-all">
+            <span className="material-symbols-outlined text-sm">delete</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function FlowCirclePage() {
   const {pushToast,user} = useApp()
   const sbToken = typeof window!=='undefined'?localStorage.getItem('wf_token'):null
@@ -128,6 +181,10 @@ export default function FlowCirclePage() {
   const [copied,setCopied]           = useState(false)
   const [syncing,setSyncing]         = useState(false)
   const [newEvTitle,setNewEvTitle]   = useState('')
+  const [showEvModal,setShowEvModal] = useState(false)
+  const [evForm,setEvForm]           = useState({ title:'', date: new Date().toISOString().split('T')[0], time:'18:00', duration:60, color:'#6467f2', emoji:'📅', note:'', image:null, pinned:false })
+  const EV_EMOJIS = ['📅','🎉','🍕','🎬','🏃','🎮','🎂','✈️','🎵','💼','🏠','🤝']
+  const EV_COLORS = ['#6467f2','#ec4899','#10b981','#f59e0b','#8b5cf6','#3b82f6','#ef4444','#06b6d4']
 
   const circle = circles.find(c=>c.id===activeId)
   const mode   = circle?CIRCLE_MODES[circle.mode]:null
@@ -162,6 +219,34 @@ export default function FlowCirclePage() {
     persist(circles.map(c=>c.id===circle.id?{...c,events:[...(c.events||[]),ev]}:c));setNewEvTitle('')
     if(isSupabaseConfigured()&&sbToken)await sb.circles.addEvent(sbToken,ev).catch(()=>{})
     pushToast('📅 Event added!','success')
+  }
+
+  const addEventFull = async()=>{
+    if(!circle||!evForm.title.trim())return
+    const ev={
+      id:'ev_'+Date.now(),
+      title:evForm.title.trim(),
+      date:evForm.date,
+      time:evForm.time,
+      duration:Number(evForm.duration),
+      color:evForm.color,
+      emoji:evForm.emoji,
+      note:evForm.note.trim(),
+      image:evForm.image,
+      pinned:evForm.pinned,
+      createdBy:user?.name||'You',
+      shared:true,
+      circle_id:circle.id,
+    }
+    persist(circles.map(c=>c.id===circle.id?{...c,events:[...(c.events||[]),ev]}:c))
+    if(isSupabaseConfigured()&&sbToken)await sb.circles.addEvent(sbToken,ev).catch(()=>{})
+    pushToast('Event created!','success')
+    setShowEvModal(false)
+    setEvForm({ title:'', date:new Date().toISOString().split('T')[0], time:'18:00', duration:60, color:'#6467f2', emoji:'📅', note:'', image:null, pinned:false })
+  }
+
+  const togglePin = (eid)=>{
+    persist(circles.map(c=>c.id===circle.id?{...c,events:(c.events||[]).map(e=>e.id===eid?{...e,pinned:!e.pinned}:e)}:c))
   }
 
   const deleteEvent = async(eid)=>{
@@ -333,23 +418,48 @@ export default function FlowCirclePage() {
                 {/* EVENTS */}
                 {activeTab==='events'&&(
                   <div className="space-y-4">
+                    {/* Toolbar */}
                     <div className="flex gap-2">
                       <input className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:border-primary"
-                        placeholder="Add a shared event..." value={newEvTitle} onChange={e=>setNewEvTitle(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addEvent()}/>
-                      <button onClick={addEvent} disabled={!newEvTitle.trim()} className="px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-40">Add</button>
+                        placeholder="Quick add event title..." value={newEvTitle} onChange={e=>setNewEvTitle(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addEvent()}/>
+                      <button onClick={addEvent} disabled={!newEvTitle.trim()} className="px-4 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-40">Quick</button>
+                      <button onClick={()=>setShowEvModal(true)} className="px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-sm">add_photo_alternate</span>
+                        New
+                      </button>
                     </div>
-                    {(circle.events||[]).length===0?(
-                      <div className="text-center py-12"><span className="text-5xl block mb-3">📅</span><p className="text-slate-400">No shared events yet</p></div>
-                    ):(
-                      <div className="space-y-3">
-                        {(circle.events||[]).map(ev=>(
-                          <div key={ev.id} className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                            <div className="w-3 rounded-full self-stretch" style={{backgroundColor:ev.color||'#6467f2',minHeight:40}}/>
-                            <div className="flex-1"><p className="font-bold text-sm">{ev.title}</p><p className="text-xs text-slate-400">{ev.date} · {ev.time} · {ev.duration}min</p></div>
-                            <button onClick={()=>deleteEvent(ev.id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-red-400"><span className="material-symbols-outlined text-sm">delete</span></button>
-                          </div>
-                        ))}
+
+                    {/* Pinned events */}
+                    {(circle.events||[]).some(e=>e.pinned)&&(
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-amber-500 mb-2 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs" style={{fontVariationSettings:"'FILL' 1"}}>push_pin</span>
+                          Pinned
+                        </p>
+                        <div className="space-y-2">
+                          {(circle.events||[]).filter(e=>e.pinned).map(ev=><EventCard key={ev.id} ev={ev} onDelete={deleteEvent} onPin={togglePin}/>)}
+                        </div>
                       </div>
+                    )}
+
+                    {/* All events */}
+                    {(circle.events||[]).filter(e=>!e.pinned).length===0&&!(circle.events||[]).some(e=>e.pinned)?(
+                      <div className="text-center py-16">
+                        <div className="text-6xl mb-4">📅</div>
+                        <p className="font-black text-slate-400 mb-1">No events yet</p>
+                        <p className="text-xs text-slate-400">Create one with images, notes and a custom color</p>
+                      </div>
+                    ):(
+                      (circle.events||[]).filter(e=>!e.pinned).length>0&&(
+                        <div>
+                          {(circle.events||[]).some(e=>e.pinned)&&(
+                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">All Events</p>
+                          )}
+                          <div className="space-y-3">
+                            {(circle.events||[]).filter(e=>!e.pinned).map(ev=><EventCard key={ev.id} ev={ev} onDelete={deleteEvent} onPin={togglePin}/>)}
+                          </div>
+                        </div>
+                      )
                     )}
                   </div>
                 )}
@@ -432,6 +542,120 @@ export default function FlowCirclePage() {
         </div>
       </div>
       {showCreate&&<CreateModal onClose={()=>setShowCreate(false)} onCreate={createCircle}/>}
+
+      {/* ── New Event Modal ── */}
+      {showEvModal&&circle&&(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <h3 className="font-black text-lg">New Event</h3>
+              <button onClick={()=>setShowEvModal(false)} className="w-8 h-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400">
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-6 space-y-5">
+
+              {/* Image upload */}
+              <div>
+                {evForm.image?(
+                  <div className="relative rounded-2xl overflow-hidden h-40 group">
+                    <img src={evForm.image} alt="" className="w-full h-full object-cover"/>
+                    <button onClick={()=>setEvForm(f=>({...f,image:null}))}
+                      className="absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center text-white transition-all">
+                      <span className="material-symbols-outlined text-xs">close</span>
+                    </button>
+                  </div>
+                ):(
+                  <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl cursor-pointer hover:border-primary transition-colors group">
+                    <span className="material-symbols-outlined text-2xl text-slate-300 group-hover:text-primary transition-colors">add_photo_alternate</span>
+                    <span className="text-xs text-slate-400 mt-1 font-medium">Add cover image</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={e=>{
+                      const file=e.target.files?.[0];if(!file)return
+                      const reader=new FileReader();reader.onload=ev=>setEvForm(f=>({...f,image:ev.target.result}));reader.readAsDataURL(file)
+                    }}/>
+                  </label>
+                )}
+              </div>
+
+              {/* Emoji picker */}
+              <div>
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Category</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {evForm.EV_EMOJIS||['📅','🎉','🍕','🎬','🏃','🎮','🎂','✈️','🎵','💼','🏠','🤝'].map(em=>(
+                    <button key={em} onClick={()=>setEvForm(f=>({...f,emoji:em}))}
+                      className={`w-9 h-9 rounded-xl text-lg transition-all hover:scale-110 ${evForm.emoji===em?'bg-primary/10 ring-2 ring-primary scale-110':'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                      {em}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Title *</label>
+                <input className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary"
+                  placeholder="What's happening?" value={evForm.title} onChange={e=>setEvForm(f=>({...f,title:e.target.value}))}/>
+              </div>
+
+              {/* Date + Time + Duration */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Date</label>
+                  <input type="date" className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
+                    value={evForm.date} onChange={e=>setEvForm(f=>({...f,date:e.target.value}))}/>
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Time</label>
+                  <input type="time" className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
+                    value={evForm.time} onChange={e=>setEvForm(f=>({...f,time:e.target.value}))}/>
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Duration</label>
+                  <select className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
+                    value={evForm.duration} onChange={e=>setEvForm(f=>({...f,duration:e.target.value}))}>
+                    {[30,60,90,120,180,240,480].map(d=><option key={d} value={d}>{d<60?d+'min':d/60+'h'}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Color */}
+              <div>
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Color</label>
+                <div className="flex gap-2">
+                  {['#6467f2','#ec4899','#10b981','#f59e0b','#8b5cf6','#3b82f6','#ef4444','#06b6d4'].map(col=>(
+                    <button key={col} onClick={()=>setEvForm(f=>({...f,color:col}))}
+                      className={`w-8 h-8 rounded-full hover:scale-110 transition-all ${evForm.color===col?'ring-2 ring-offset-2 ring-slate-400 scale-110':''}`}
+                      style={{backgroundColor:col}}/>
+                  ))}
+                </div>
+              </div>
+
+              {/* Note */}
+              <div>
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Note (optional)</label>
+                <textarea className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary resize-none"
+                  rows={2} placeholder="Any details, address, link..."
+                  value={evForm.note} onChange={e=>setEvForm(f=>({...f,note:e.target.value}))}/>
+              </div>
+
+              {/* Pin toggle */}
+              <button onClick={()=>setEvForm(f=>({...f,pinned:!f.pinned}))}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-sm font-bold transition-all ${evForm.pinned?'border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-600':'border-slate-200 dark:border-slate-700 text-slate-400 hover:border-amber-400/50'}`}>
+                <span className="material-symbols-outlined text-sm" style={evForm.pinned?{fontVariationSettings:"'FILL' 1"}:{}}>push_pin</span>
+                {evForm.pinned?'Pinned — will show at top':'Pin this event'}
+              </button>
+            </div>
+
+            <div className="flex gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
+              <button onClick={()=>setShowEvModal(false)} className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold">Cancel</button>
+              <button onClick={addEventFull} disabled={!evForm.title.trim()}
+                className="flex-1 py-3 rounded-xl bg-primary text-white text-sm font-bold hover:opacity-90 disabled:opacity-40">
+                Create Event
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
