@@ -31,6 +31,7 @@ import Confetti       from './components/Confetti'
 import SplashScreen   from './components/SplashScreen'
 import AIChat         from './components/AIChat'
 import TourGuide, { useTour } from './components/TourGuide'
+import SetupWizard    from './components/SetupWizard'
 
 // ── Page map ─────────────────────────────────────────────────────────────────
 const PAGES = {
@@ -111,6 +112,16 @@ function AppInner() {
   } = useApp()
 
   const { show: showTour, finish: finishTour } = useTour()
+
+  // Electron first-run setup wizard
+  const isElectron = typeof window !== 'undefined' && !!window.electron
+  const [setupDone, setSetupDone] = useState(
+    () => !isElectron || localStorage.getItem('wf_setup_done') === '1'
+  )
+
+  if (!setupDone) {
+    return <SetupWizard onFinish={() => setSetupDone(true)} />
+  }
 
   // Splash — show once per browser session
   const [splashDone, setSplashDone] = useState(
