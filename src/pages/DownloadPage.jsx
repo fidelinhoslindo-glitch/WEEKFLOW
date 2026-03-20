@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 
-const DOWNLOAD_URL = 'https://github.com/fidelinhoslindo-glitch/WEEKFLOW/releases/latest'
+const DOWNLOAD_URL = 'https://github.com/fidelinhoslindo-glitch/WEEKFLOW/releases/download/v2.5.0/WeekFlow.Setup.2.5.0.exe'
 const VERSION = '2.5.0'
 const RELEASE_DATE = 'March 2026'
-const SIZE = '~150 MB'
+const SIZE = '~97 MB'
 
 export default function DownloadPage() {
   const { navigate, darkMode } = useApp()
