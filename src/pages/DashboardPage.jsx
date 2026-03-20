@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../context/AppContext'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
@@ -9,6 +9,21 @@ export default function DashboardPage() {
   const { tasks, navigate, setShowAddTask, weekDays, getTasksForDay, completionRate, categoryColors, user, setShowAIChat } = useApp()
   const [timer, setTimer] = useState(25 * 60)
   const [timerRunning, setTimerRunning] = useState(false)
+  const intervalRef = useRef(null)
+
+  useEffect(() => {
+    if (timerRunning) {
+      intervalRef.current = setInterval(() => {
+        setTimer(t => {
+          if (t <= 1) { setTimerRunning(false); return 25 * 60 }
+          return t - 1
+        })
+      }, 1000)
+    } else {
+      clearInterval(intervalRef.current)
+    }
+    return () => clearInterval(intervalRef.current)
+  }, [timerRunning])
 
   const completed = tasks.filter(t => t.completed).length
   const high = tasks.filter(t => t.priority === 'high').length
@@ -134,23 +149,11 @@ export default function DashboardPage() {
               </div>
               <div className="flex gap-3 relative z-10">
                 <button
-                  onClick={() => {
-                    if (timerRunning) {
-                      setTimerRunning(false)
-                    } else {
-                      setTimerRunning(true)
-                      const interval = setInterval(() => {
-                        setTimer(t => {
-                          if (t <= 1) { clearInterval(interval); setTimerRunning(false); return 25 * 60 }
-                          return t - 1
-                        })
-                      }, 1000)
-                    }
-                  }}
+                  onClick={() => setTimerRunning(r => !r)}
                   className="flex-1 bg-white text-primary py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors">
                   {timerRunning ? '⏸ Pause' : '▶ Start Session'}
                 </button>
-                <button onClick={() => { setTimer(25 * 60); setTimerRunning(false) }} className="bg-white/20 text-white px-3 py-3 rounded-xl hover:bg-white/30 transition-colors">
+                <button onClick={() => { setTimerRunning(false); setTimer(25 * 60) }} className="bg-white/20 text-white px-3 py-3 rounded-xl hover:bg-white/30 transition-colors">
                   <span className="material-symbols-outlined text-sm">refresh</span>
                 </button>
               </div>

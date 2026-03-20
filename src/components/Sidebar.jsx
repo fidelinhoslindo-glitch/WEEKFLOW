@@ -18,7 +18,7 @@ const navItems = [
 ]
 
 function Sidebar() {
-  const { page, navigate, isPro, FREE_LIMIT, tasksState, user, darkMode, setDarkMode, tasks, logout, generateRecurring, pushToast, syncStatus, session } = useApp()
+  const { page, navigate, isPro, user, darkMode, setDarkMode, tasks, generateRecurring } = useApp()
   const completed = tasks.filter(t => t.completed).length
   const pct = Math.round((completed / tasks.length) * 100)
 
@@ -80,19 +80,6 @@ function Sidebar() {
           <span className="material-symbols-outlined text-sm">refresh</span>
           Reset recurring tasks
         </button>
-        {/* Cloud sync status */}
-        {session && (
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold mb-1 ${
-            syncStatus === 'synced'  ? 'text-emerald-500' :
-            syncStatus === 'syncing' ? 'text-amber-500'   :
-            syncStatus === 'error'   ? 'text-red-400'     : 'text-slate-400'
-          }`}>
-            <span className={`material-symbols-outlined text-sm ${syncStatus === 'syncing' ? 'animate-spin' : ''}`}>
-              {syncStatus === 'synced' ? 'cloud_done' : syncStatus === 'syncing' ? 'sync' : syncStatus === 'error' ? 'cloud_off' : 'cloud'}
-            </span>
-            {syncStatus === 'synced' ? 'Synced to cloud' : syncStatus === 'syncing' ? 'Syncing...' : syncStatus === 'error' ? 'Sync error' : 'Cloud sync'}
-          </div>
-        )}
         <button
           onClick={() => setDarkMode(!darkMode)}
           className="mt-3 w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"

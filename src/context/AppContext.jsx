@@ -354,7 +354,7 @@ export function AppProvider({ children }) {
 
   const canAddTask = () => {
     if (isPro) return true
-    return tasksState.length < FREE_LIMIT
+    return tasks.length < FREE_LIMIT
   }
 
 
