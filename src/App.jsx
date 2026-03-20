@@ -119,10 +119,6 @@ function AppInner() {
     () => !isElectron || localStorage.getItem('wf_setup_done') === '1'
   )
 
-  if (!setupDone) {
-    return <SetupWizard onFinish={() => setSetupDone(true)} />
-  }
-
   // Splash — show once per browser session
   const [splashDone, setSplashDone] = useState(
     () => sessionStorage.getItem('wf_splash') === '1'
@@ -130,6 +126,10 @@ function AppInner() {
   const handleSplashDone = () => {
     sessionStorage.setItem('wf_splash', '1')
     setSplashDone(true)
+  }
+
+  if (!setupDone) {
+    return <SetupWizard onFinish={() => setSetupDone(true)} />
   }
 
   if (!splashDone) {
