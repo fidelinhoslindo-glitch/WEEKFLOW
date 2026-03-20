@@ -783,43 +783,71 @@ export function SettingsPage() {
             {/* PROFILE TAB */}
             {activeTab === 'profile' && (
               <>
-                {/* Avatar card */}
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                  {/* Banner */}
-                  <div className="h-24 lg:h-32 relative" style={{ backgroundColor: avatarColor + '33' }}>
-                    <div className="absolute inset-0 bg-gradient-to-br from-transparent to-black/10" />
+                {/* Hero card */}
+                <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+                  {/* Gradient banner */}
+                  <div className="h-28 lg:h-36 relative" style={{
+                    background: `linear-gradient(135deg, ${avatarColor}cc 0%, ${avatarColor}44 50%, transparent 100%)`
+                  }}>
+                    <div className="absolute inset-0" style={{
+                      backgroundImage: `radial-gradient(circle at 20% 50%, ${avatarColor}55 0%, transparent 60%), radial-gradient(circle at 80% 20%, #ffffff11 0%, transparent 50%)`
+                    }} />
+                    {/* Edit avatar button — top right */}
+                    <button onClick={() => setEditingAvatar(!editingAvatar)}
+                      className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/20 hover:bg-black/30 backdrop-blur-sm text-white rounded-xl text-xs font-semibold transition-all">
+                      <span className="material-symbols-outlined text-xs">palette</span>
+                      Customize
+                    </button>
                   </div>
+
                   {/* Avatar + info */}
-                  <div className="px-6 pb-6 -mt-10 lg:-mt-12">
-                    <div className="flex items-end justify-between mb-4">
-                      <div className="relative">
-                        {user.avatarImg ? (
-                          <img src={user.avatarImg} alt="Avatar" className="w-20 h-20 lg:w-24 lg:h-24 rounded-2xl border-4 border-white dark:border-slate-900 shadow-xl object-cover" />
-                        ) : (
-                          <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-2xl border-4 border-white dark:border-slate-900 flex items-center justify-center text-white text-3xl font-black shadow-xl"
-                            style={{ backgroundColor: avatarColor }}>
-                            {user.name.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <button onClick={() => setEditingAvatar(!editingAvatar)}
-                          className="absolute -bottom-1 -right-1 w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-all">
-                          <span className="material-symbols-outlined text-sm">edit</span>
-                        </button>
+                  <div className="bg-white dark:bg-slate-900 px-6 pb-6">
+                    <div className="flex items-end gap-4 -mt-8 mb-4">
+                      <div className="relative shrink-0">
+                        <div className="p-1 rounded-2xl bg-white dark:bg-slate-900 shadow-xl">
+                          {user.avatarImg ? (
+                            <img src={user.avatarImg} alt="Avatar" className="w-20 h-20 lg:w-24 lg:h-24 rounded-xl object-cover" />
+                          ) : (
+                            <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-xl flex items-center justify-center text-white text-4xl font-black"
+                              style={{ backgroundColor: avatarColor }}>
+                              {user.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-400 border-2 border-white dark:border-slate-900 flex items-center justify-center">
+                          <span className="w-2 h-2 rounded-full bg-white" />
+                        </span>
                       </div>
-                      <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-black px-3 py-1.5 rounded-full">
-                        <span className="material-symbols-outlined text-xs fill-icon" style={{fontVariationSettings:"'FILL' 1"}}>verified</span>
-                        {user.plan} Plan
-                      </span>
+                      <div className="pb-1 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h2 className="text-xl font-black truncate">{user.name}</h2>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: avatarColor + '22', color: avatarColor }}>
+                            <span className="material-symbols-outlined text-[10px]" style={{fontVariationSettings:"'FILL' 1"}}>verified</span>
+                            {user.plan}
+                          </span>
+                        </div>
+                        <p className="text-slate-400 text-xs mt-0.5 truncate">{user.email}</p>
+                      </div>
                     </div>
 
-                    {/* Avatar editor */}
+                    {/* Avatar editor inline */}
                     {editingAvatar && (
-                      <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-3">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Customize Avatar</p>
-                        {/* File upload */}
+                      <div className="mb-5 p-4 bg-slate-50 dark:bg-slate-800/70 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+                        <p className="text-xs font-black text-slate-400 uppercase tracking-wider">Customize Avatar</p>
                         <div>
-                          <p className="text-xs text-slate-500 mb-2">Upload photo</p>
-                          <label className="flex items-center gap-2 cursor-pointer px-4 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl hover:border-primary transition-colors">
+                          <p className="text-xs text-slate-500 mb-2 font-medium">Avatar color</p>
+                          <div className="flex gap-2 flex-wrap">
+                            {AVATAR_COLORS.map(col => (
+                              <button key={col} onClick={() => { setAvatarColor(col); setUser(prev => ({...prev, avatarColor: col, avatarImg: null})); setEditingAvatar(false) }}
+                                className={`w-9 h-9 rounded-xl transition-all hover:scale-110 ${avatarColor===col ? 'ring-2 ring-offset-2 ring-primary scale-110' : ''}`}
+                                style={{ backgroundColor: col }} />
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 mb-2 font-medium">Upload photo</p>
+                          <label className="flex items-center gap-2 cursor-pointer px-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl hover:border-primary transition-colors w-fit">
                             <span className="material-symbols-outlined text-primary text-sm">upload</span>
                             <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">Choose image</span>
                             <input type="file" accept="image/*" className="hidden" onChange={e => {
@@ -829,22 +857,11 @@ export function SettingsPage() {
                               reader.onload = ev => {
                                 setUser(prev => ({ ...prev, avatarImg: ev.target.result }))
                                 setEditingAvatar(false)
-                                pushToast('Avatar updated! 🎉', 'success')
+                                pushToast('Avatar updated!', 'success')
                               }
                               reader.readAsDataURL(file)
                             }} />
                           </label>
-                        </div>
-                        {/* Color picker */}
-                        <div>
-                          <p className="text-xs text-slate-500 mb-2">Or choose color</p>
-                          <div className="flex gap-2 flex-wrap">
-                            {AVATAR_COLORS.map(col => (
-                              <button key={col} onClick={() => { setAvatarColor(col); setUser(prev => ({...prev, avatarColor: col, avatarImg: null})); setEditingAvatar(false) }}
-                                className={`w-8 h-8 rounded-full transition-all hover:scale-110 ${avatarColor===col ? 'ring-2 ring-offset-2 ring-primary scale-110' : ''}`}
-                                style={{ backgroundColor: col }} />
-                            ))}
-                          </div>
                         </div>
                         {user.avatarImg && (
                           <button onClick={() => { setUser(prev => ({...prev, avatarImg: null})); pushToast('Photo removed','info') }}
@@ -855,18 +872,16 @@ export function SettingsPage() {
                       </div>
                     )}
 
-                    <h2 className="text-xl font-black">{user.name}</h2>
-                    <p className="text-slate-500 text-sm">{user.email}</p>
-
                     {/* Stats row */}
-                    <div className="grid grid-cols-3 gap-3 mt-4">
+                    <div className="grid grid-cols-3 gap-3">
                       {[
-                        { label: 'Tasks Total', value: tasks.length },
-                        { label: 'Completed',   value: doneTasks    },
-                        { label: 'Hours Planned', value: totalHours  },
+                        { label: 'Total Tasks',    value: tasks.length, icon: 'task_alt'    },
+                        { label: 'Completed',      value: doneTasks,    icon: 'check_circle' },
+                        { label: 'Hours Planned',  value: totalHours,   icon: 'schedule'     },
                       ].map(s => (
-                        <div key={s.label} className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 text-center">
-                          <p className="text-2xl font-black text-primary">{s.value}</p>
+                        <div key={s.label} className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 text-center group hover:bg-primary/5 transition-colors">
+                          <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 group-hover:text-primary transition-colors text-lg">{s.icon}</span>
+                          <p className="text-2xl font-black mt-1" style={{ color: avatarColor }}>{s.value}</p>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{s.label}</p>
                         </div>
                       ))}
@@ -875,17 +890,22 @@ export function SettingsPage() {
                 </div>
 
                 {/* Edit form */}
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-                  <h3 className="font-black text-base">Edit Profile</h3>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Full Name</label>
-                    <input className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                      value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-5">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-sm text-slate-400">manage_accounts</span>
+                    <h3 className="font-black text-sm uppercase tracking-wider text-slate-400">Edit Profile</h3>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Email</label>
-                    <input type="email" className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                      value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1.5">Full Name</label>
+                      <input className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                        value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1.5">Email</label>
+                      <input type="email" className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                        value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+                    </div>
                   </div>
                   <button onClick={saveProfile}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${saved ? 'bg-emerald-500 text-white' : 'bg-primary text-white hover:opacity-90 shadow-lg shadow-primary/25'}`}>
@@ -896,13 +916,26 @@ export function SettingsPage() {
 
                 {/* Subscription */}
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-                  <h3 className="font-black text-base mb-4">Subscription</h3>
-                  <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/20">
-                    <div>
-                      <p className="font-black text-primary">Pro Plan</p>
-                      <p className="text-sm text-slate-500 mt-0.5">Billed monthly · $9/mo</p>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="material-symbols-outlined text-sm text-slate-400">workspace_premium</span>
+                    <h3 className="font-black text-sm uppercase tracking-wider text-slate-400">Subscription</h3>
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-2xl border-2"
+                    style={{ borderColor: avatarColor + '33', backgroundColor: avatarColor + '08' }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-black shrink-0"
+                        style={{ backgroundColor: avatarColor }}>
+                        ✦
+                      </div>
+                      <div>
+                        <p className="font-black text-sm" style={{ color: avatarColor }}>{user.plan} Plan</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Billed monthly · $9/mo</p>
+                      </div>
                     </div>
-                    <button className="px-4 py-2 border-2 border-primary/30 rounded-xl text-sm font-bold text-primary hover:bg-primary hover:text-white transition-all">
+                    <button className="px-4 py-2 border-2 rounded-xl text-sm font-bold transition-all hover:text-white"
+                      style={{ borderColor: avatarColor + '44', color: avatarColor }}
+                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = avatarColor; e.currentTarget.style.color = 'white' }}
+                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = avatarColor }}>
                       Manage
                     </button>
                   </div>
