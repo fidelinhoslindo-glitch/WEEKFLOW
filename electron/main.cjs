@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, shell } = require('electron')
+const { app, BrowserWindow, Tray, Menu, nativeImage, shell, ipcMain } = require('electron')
 const path = require('path')
 
 const isDev = !app.isPackaged
@@ -66,6 +66,11 @@ function createTray() {
   tray.setContextMenu(contextMenu)
   tray.on('double-click', () => mainWindow?.show())
 }
+
+// Open URLs in user's default browser (for OAuth, etc.)
+ipcMain.on('open-external', (event, url) => {
+  shell.openExternal(url)
+})
 
 app.whenReady().then(() => {
   createWindow()

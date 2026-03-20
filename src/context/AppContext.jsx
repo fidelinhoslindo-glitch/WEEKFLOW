@@ -215,13 +215,10 @@ export function AppProvider({ children }) {
     const redirectTo = window.location.origin + window.location.pathname
     const authUrl = `${SB_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`
 
-    // Detect Electron desktop app
-    const isElectron = typeof window !== 'undefined' && window.__WEEKFLOW_DESKTOP__?.isDesktop
-    if (isElectron && window.__WEEKFLOW_DESKTOP__?.openUrl) {
-      // Open in the user's default browser (Chrome, Edge, etc.)
-      window.__WEEKFLOW_DESKTOP__.openUrl(authUrl)
+    // Detect Electron desktop app — open OAuth in system browser
+    if (window.electron?.openExternal) {
+      window.electron.openExternal(authUrl)
     } else {
-      // Normal web browser redirect
       window.location.href = authUrl
     }
   }
@@ -232,9 +229,8 @@ export function AppProvider({ children }) {
     if (!SB_URL) throw new Error('Supabase not configured')
     const redirectTo = window.location.origin + window.location.pathname
     const authUrl = `${SB_URL}/auth/v1/authorize?provider=apple&redirect_to=${encodeURIComponent(redirectTo)}`
-    const isElectron = typeof window !== 'undefined' && window.__WEEKFLOW_DESKTOP__?.isDesktop
-    if (isElectron && window.__WEEKFLOW_DESKTOP__?.openUrl) {
-      window.__WEEKFLOW_DESKTOP__.openUrl(authUrl)
+    if (window.electron?.openExternal) {
+      window.electron.openExternal(authUrl)
     } else {
       window.location.href = authUrl
     }
