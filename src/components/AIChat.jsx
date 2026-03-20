@@ -83,7 +83,7 @@ export default function AIChat({ onClose }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer gsk_weekflow_placeholder_replace_with_real_key',
+          'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
         },
         body: JSON.stringify({
           model: 'llama3-8b-8192',
