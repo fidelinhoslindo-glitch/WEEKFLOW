@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 
-const DOWNLOAD_URL = 'https://github.com/fidelinhoslindo-glitch/WEEKFLOW/releases/download/2.5.0/WeekFlow%20Setup%202.5.0.exe'
+const DOWNLOAD_URL = 'https://github.com/fidelinhoslindo-glitch/WEEKFLOW/releases/download/2.5.0/WeekFlow.Setup.2.5.0.exe'
 const VERSION = '2.5.0'
 const RELEASE_DATE = 'March 2026'
 const SIZE = '~97 MB'
