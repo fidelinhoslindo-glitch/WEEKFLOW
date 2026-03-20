@@ -18,6 +18,7 @@ const T = {
     footerTagline: 'Organize your week, find your flow.',
     login: 'Log In',
     getStarted: 'Get Started',
+    goToDashboard: 'My Dashboard',
     free: 'Free',
     pro: 'Pro',
     monthly: '/mo',
@@ -52,6 +53,7 @@ const T = {
     footerTagline: 'Organize sua semana, encontre seu fluxo.',
     login: 'Entrar',
     getStarted: 'Começar',
+    goToDashboard: 'Meu Painel',
     free: 'Grátis',
     pro: 'Pro',
     monthly: '/mês',
@@ -86,6 +88,7 @@ const T = {
     footerTagline: 'Organiza tu semana, encuentra tu flujo.',
     login: 'Iniciar sesión',
     getStarted: 'Empezar',
+    goToDashboard: 'Mi Panel',
     free: 'Gratis',
     pro: 'Pro',
     monthly: '/mes',
@@ -204,8 +207,16 @@ export default function LandingPage() {
               <button onClick={() => navigate('download')} className="hidden sm:flex items-center gap-1.5 text-sm font-semibold px-4 py-2 hover:bg-primary/5 rounded-xl transition-all">
                 <span className="material-symbols-outlined text-sm text-primary">download</span>Desktop
               </button>
-              <button onClick={() => navigate('login')} className="hidden sm:block text-sm font-semibold px-4 py-2 hover:bg-primary/5 rounded-xl transition-all">{t.login}</button>
-              <button onClick={handleStart} className="bg-primary text-white text-sm font-bold px-5 py-2 rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-all">{t.getStarted}</button>
+              {!isLoggedIn && (
+                <button onClick={() => navigate('login')} className="hidden sm:block text-sm font-semibold px-4 py-2 hover:bg-primary/5 rounded-xl transition-all">{t.login}</button>
+              )}
+              {isLoggedIn ? (
+                <button onClick={() => navigate('dashboard')} className="bg-primary text-white text-sm font-bold px-5 py-2 rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-all flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sm">dashboard</span>{t.goToDashboard}
+                </button>
+              ) : (
+                <button onClick={handleStart} className="bg-primary text-white text-sm font-bold px-5 py-2 rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-all">{t.getStarted}</button>
+              )}
             </div>
           </div>
         </div>
@@ -251,10 +262,10 @@ export default function LandingPage() {
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
             style={{animation:'fadeUp 0.7s ease 0.3s both'}}>
-            <button onClick={handleStart}
+            <button onClick={isLoggedIn ? () => navigate('dashboard') : handleStart}
               className="w-full sm:w-auto group bg-primary text-white text-base font-bold px-8 py-4 rounded-xl shadow-xl shadow-primary/30 hover:shadow-primary/50 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2">
-              <span className="material-symbols-outlined text-sm group-hover:rotate-12 transition-transform">bolt</span>
-              {t.cta1}
+              <span className="material-symbols-outlined text-sm group-hover:rotate-12 transition-transform">{isLoggedIn ? 'dashboard' : 'bolt'}</span>
+              {isLoggedIn ? t.goToDashboard : t.cta1}
             </button>
             <button onClick={() => navigate('dashboard')}
               className="w-full sm:w-auto bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-base font-bold px-8 py-4 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all inline-flex items-center justify-center gap-2">
@@ -402,7 +413,7 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <button onClick={handleStart} className="w-full py-3 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary/5 transition-all">{t.getStarted}</button>
+                <button onClick={isLoggedIn ? () => navigate('dashboard') : handleStart} className="w-full py-3 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary/5 transition-all">{isLoggedIn ? t.goToDashboard : t.getStarted}</button>
               </div>
             </FadeIn>
             {/* Pro */}
@@ -420,7 +431,7 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <button onClick={handleStart} className="w-full py-3 rounded-xl bg-white text-primary font-bold hover:bg-white/90 transition-all">{t.getStarted}</button>
+                <button onClick={isLoggedIn ? () => navigate('dashboard') : handleStart} className="w-full py-3 rounded-xl bg-white text-primary font-bold hover:bg-white/90 transition-all">{isLoggedIn ? t.goToDashboard : t.getStarted}</button>
               </div>
             </FadeIn>
           </div>
@@ -462,9 +473,9 @@ export default function LandingPage() {
             <h2 className="text-4xl md:text-6xl font-black text-white mb-6 leading-tight">
               {lang==='pt'?'Sua semana mais organizada começa hoje.':lang==='es'?'Tu semana más organizada empieza hoy.':'Your most organized week starts today.'}
             </h2>
-            <button onClick={handleStart}
+            <button onClick={isLoggedIn ? () => navigate('dashboard') : handleStart}
               className="bg-white text-primary text-lg font-black px-10 py-5 rounded-2xl shadow-2xl hover:scale-105 transition-all">
-              {t.cta1} →
+              {isLoggedIn ? t.goToDashboard : t.cta1} →
             </button>
           </div>
         </section>

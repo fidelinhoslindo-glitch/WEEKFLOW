@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { SUPABASE_ENABLED, sb, supabaseSignIn, supabaseSignUp, supabaseSignOut, isSupabaseConfigured } from '../utils/supabase'
-import { TOAST_TIMEOUT, FREE_TASK_LIMIT } from '../utils/constants'
+import { TOAST_TIMEOUT, FREE_TASK_LIMIT, VALID_PAGES } from '../utils/constants'
 
 const AppContext = createContext(null)
 
@@ -295,7 +295,15 @@ export function AppProvider({ children }) {
   const currentWeekLabel = weekLabel(weekOffset)
 
   // ── UI ────────────────────────────────────────────────────────────────────
-  const [page,        setPage]        = useState(() => {
+  // ── Hash-based routing helpers ───────────────────────────────────────────
+  const getPageFromHash = () => {
+    const hash = window.location.hash.replace('#', '')
+    return hash && VALID_PAGES.includes(hash) ? hash : null
+  }
+
+  const [page, setPage] = useState(() => {
+    const hashPage = getPageFromHash()
+    if (hashPage) return hashPage
     if (!load(LS.AUTH, false)) return 'landing'
     const ob = load(LS.ONBOARD, {})
     const doneOnboarding = ob && Object.keys(ob).length > 0
@@ -311,7 +319,22 @@ export function AppProvider({ children }) {
   const [showAIChat,  setShowAIChat]  = useState(false)
 
   const setDarkMode = (v) => { setDarkModeRaw(v); save(LS.DARK,v) }
-  const navigate    = (to) => setPage(to)
+  const navigate    = (to) => {
+    setPage(to)
+    window.history.pushState({ page: to }, '', `#${to}`)
+  }
+
+  // Sync initial state into history so the first "back" works correctly
+  useEffect(() => {
+    window.history.replaceState({ page }, '', `#${page}`)
+    const onPop = (e) => {
+      const pg = e.state?.page || getPageFromHash() || 'landing'
+      setPage(pg)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Plan helpers ──────────────────────────────────────────────────────────
   const isPro      = user?.plan === 'Pro'
