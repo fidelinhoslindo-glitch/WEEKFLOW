@@ -8,12 +8,9 @@ const navItems = [
   { id: 'smart-calendar',label: 'Smart Cal',    icon: 'auto_awesome'     },
   { id: 'flowcircle',    label: 'FlowCircle',   icon: 'hub'              },
   { id: 'notes',         label: 'Notes',        icon: 'sticky_note_2'    },
-  { id: 'timer',         label: 'Timer',        icon: 'timer'            },
   { id: 'pomodoro',      label: 'Pomodoro',     icon: 'self_improvement' },
   { id: 'analytics',     label: 'Analytics',    icon: 'bar_chart'        },
   { id: 'settings',      label: 'Settings',     icon: 'settings'         },
-  { id: 'share',         label: 'Share Week',   icon: 'share'            },
-  { id: 'export',        label: 'Export',       icon: 'download'         },
   { id: 'download',      label: 'Desktop App',  icon: 'computer'         },
 ]
 

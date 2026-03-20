@@ -59,9 +59,9 @@ const PAGES = {
 }
 
 const APP_PAGES = [
-  'dashboard','planner','daily','templates','calendar','analytics',
-  'settings','pomodoro','export','empty','notes','smart-calendar',
-  'flowcircle','timer','share',
+  'dashboard','planner','daily','calendar','analytics',
+  'settings','pomodoro','empty','notes','smart-calendar',
+  'flowcircle',
 ]
 
 // ── ErrorBoundary — catches silent React crashes ──────────────────────────────

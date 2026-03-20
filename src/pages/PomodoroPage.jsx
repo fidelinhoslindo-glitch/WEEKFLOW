@@ -24,6 +24,31 @@ export default function PomodoroPage() {
   const [linkedTask, setLinkedTask] = useState(null)
   const [settings, setSettings] = useState({ focusMins: 25, shortMins: 5, longMins: 15, autoBreak: true, sound: true })
   const [showSettings, setShowSettings] = useState(false)
+  const [showFreeTimer, setShowFreeTimer] = useState(false)
+  const [freeInput, setFreeInput] = useState({ h: 0, m: 5, s: 0 })
+  const [freeSecs, setFreeSecs] = useState(5 * 60)
+  const [freeRunning, setFreeRunning] = useState(false)
+  const freeRef = useRef(null)
+
+  useEffect(() => {
+    if (freeRunning) {
+      freeRef.current = setInterval(() => {
+        setFreeSecs(s => {
+          if (s <= 1) { setFreeRunning(false); clearInterval(freeRef.current); return 0 }
+          return s - 1
+        })
+      }, 1000)
+    } else {
+      clearInterval(freeRef.current)
+    }
+    return () => clearInterval(freeRef.current)
+  }, [freeRunning])
+
+  const freeTotal = freeInput.h * 3600 + freeInput.m * 60 + freeInput.s
+  const freeProgress = freeTotal > 0 ? 1 - freeSecs / freeTotal : 0
+  const freeMM = String(Math.floor(freeSecs / 60)).padStart(2, '0')
+  const freeSS = String(freeSecs % 60).padStart(2, '0')
+  const freeHH = String(Math.floor(freeSecs / 3600)).padStart(2, '0')
 
   const intervalRef = useRef(null)
   const mode = MODES[modeIdx]
@@ -130,15 +155,75 @@ export default function PomodoroPage() {
             {/* Mode tabs */}
             <div className="flex gap-2 bg-white dark:bg-slate-900 rounded-2xl p-2 border border-slate-200 dark:border-slate-800">
               {MODES.map((m, i) => (
-                <button key={m.id} onClick={() => switchMode(i)}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${modeIdx === i ? `${m.bg} text-white shadow-md` : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                <button key={m.id} onClick={() => { setShowFreeTimer(false); switchMode(i) }}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${!showFreeTimer && modeIdx === i ? `${m.bg} text-white shadow-md` : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                   {m.label}
                 </button>
               ))}
+              <button onClick={() => { setShowFreeTimer(true); setFreeRunning(false) }}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${showFreeTimer ? 'bg-amber-500 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                Timer
+              </button>
             </div>
 
+            {/* Free Timer */}
+            {showFreeTimer && (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-10 flex flex-col items-center gap-8">
+                <div className="relative">
+                  <svg width="220" height="220" className="-rotate-90">
+                    <circle cx="110" cy="110" r="90" fill="none" stroke="currentColor" strokeWidth="8" className="text-slate-100 dark:text-slate-800"/>
+                    <circle cx="110" cy="110" r="90" fill="none" stroke="currentColor" strokeWidth="8"
+                      strokeLinecap="round"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={circumference * (1 - freeProgress)}
+                      className="stroke-amber-500"
+                      style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-6xl font-black tabular-nums text-amber-500">
+                      {freeSecs >= 3600 ? `${freeHH}:${freeMM}:${freeSS}` : `${freeMM}:${freeSS}`}
+                    </span>
+                    <span className="text-sm font-bold text-slate-400 mt-1">Free Timer</span>
+                  </div>
+                </div>
+                {/* Duration inputs */}
+                {!freeRunning && freeSecs === freeTotal && (
+                  <div className="flex gap-4 items-end">
+                    {[{ label: 'Hours', key: 'h', max: 23 }, { label: 'Min', key: 'm', max: 59 }, { label: 'Sec', key: 's', max: 59 }].map(f => (
+                      <div key={f.key} className="flex flex-col items-center gap-1">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">{f.label}</label>
+                        <input
+                          type="number" min={0} max={f.max}
+                          value={freeInput[f.key]}
+                          onChange={e => {
+                            const val = Math.max(0, Math.min(f.max, Number(e.target.value)))
+                            const next = { ...freeInput, [f.key]: val }
+                            setFreeInput(next)
+                            setFreeSecs(next.h * 3600 + next.m * 60 + next.s)
+                          }}
+                          className="w-16 text-center text-2xl font-black rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 py-2 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center gap-4">
+                  <button onClick={() => { setFreeRunning(false); setFreeSecs(freeTotal) }}
+                    className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors">
+                    <span className="material-symbols-outlined">refresh</span>
+                  </button>
+                  <button onClick={() => setFreeRunning(r => !r)} disabled={freeSecs === 0}
+                    className="w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl font-black shadow-2xl shadow-amber-500/30 transition-all hover:scale-105 bg-amber-500 disabled:opacity-40">
+                    <span className="material-symbols-outlined text-4xl fill-icon">{freeRunning ? 'pause' : 'play_arrow'}</span>
+                  </button>
+                  <div className="w-12 h-12" />
+                </div>
+              </div>
+            )}
+
             {/* Ring timer */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-10 flex flex-col items-center gap-8">
+            {!showFreeTimer && <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-10 flex flex-col items-center gap-8">
               <div className="relative">
                 <svg width="220" height="220" className="-rotate-90">
                   <circle cx="110" cy="110" r="90" fill="none" stroke="currentColor" strokeWidth="8" className="text-slate-100 dark:text-slate-800"/>
@@ -186,7 +271,7 @@ export default function PomodoroPage() {
                   ))}
                 </select>
               </div>
-            </div>
+            </div>}
 
             {/* Settings panel */}
             {showSettings && (

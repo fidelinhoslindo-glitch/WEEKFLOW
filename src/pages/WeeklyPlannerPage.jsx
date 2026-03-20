@@ -7,7 +7,7 @@ const CATEGORIES = ['All', 'Work', 'Gym', 'Study', 'Rest', 'Other']
 const PRIORITIES  = ['All', 'high', 'medium', 'low']
 
 export default function WeeklyPlannerPage() {
-  const { weekDays, tasks, toggleTask, deleteTask, setShowAddTask, categoryColors, setSelectedDay, moveTask, setEditingTask, pushToast, weekOffset, goToPrevWeek, goToNextWeek, goToThisWeek, currentWeekLabel, TASK_COLORS } = useApp()
+  const { weekDays, tasks, toggleTask, deleteTask, setShowAddTask, categoryColors, setSelectedDay, moveTask, setEditingTask, pushToast, weekOffset, goToPrevWeek, goToNextWeek, goToThisWeek, currentWeekLabel, TASK_COLORS, navigate } = useApp()
 
   const [filterCat,  setFilterCat]  = useState('All')
   const [filterPrio, setFilterPrio] = useState('All')
@@ -143,6 +143,18 @@ export default function WeeklyPlannerPage() {
             <span className="material-symbols-outlined text-sm">tune</span>
             <span className="hidden sm:inline">Filters</span>
             {activeFilters > 0 && <span className="w-5 h-5 bg-primary text-white text-[10px] font-black rounded-full flex items-center justify-center">{activeFilters}</span>}
+          </button>
+
+          <button onClick={() => navigate('templates')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all border-2 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-primary/40 hover:text-primary">
+            <span className="material-symbols-outlined text-sm">view_list</span>
+            <span className="hidden sm:inline">Templates</span>
+          </button>
+
+          <button onClick={() => navigate('share')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all border-2 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-primary/40 hover:text-primary">
+            <span className="material-symbols-outlined text-sm">share</span>
+            <span className="hidden sm:inline">Share</span>
           </button>
 
           <button onClick={() => setShowAddTask(true)}

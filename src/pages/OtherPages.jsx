@@ -494,7 +494,7 @@ export function CalendarPage() {
 }
 
 export function AnalyticsPage() {
-  const { tasks, weekDays, categoryColors } = useApp()
+  const { tasks, weekDays, categoryColors, navigate } = useApp()
 
   // ── Computed stats ────────────────────────────────────────────────────────
   const total        = tasks.length
@@ -537,6 +537,13 @@ export function AnalyticsPage() {
       <div className="flex-1 flex flex-col">
         <Header title="Analytics" subtitle="Insights from your real task data" />
         <main className="flex-1 p-4 lg:p-8 space-y-6 overflow-y-auto">
+          <div className="flex justify-end">
+            <button onClick={() => navigate('settings')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border-2 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-primary/40 hover:text-primary transition-all">
+              <span className="material-symbols-outlined text-sm">download</span>
+              Export Data
+            </button>
+          </div>
 
           {tasks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
