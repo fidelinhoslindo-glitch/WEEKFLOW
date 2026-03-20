@@ -295,15 +295,15 @@ export function AppProvider({ children }) {
   const currentWeekLabel = weekLabel(weekOffset)
 
   // ── UI ────────────────────────────────────────────────────────────────────
-  // ── Hash-based routing helpers ───────────────────────────────────────────
-  const getPageFromHash = () => {
-    const hash = window.location.hash.replace('#', '')
-    return hash && VALID_PAGES.includes(hash) ? hash : null
+  // ── Path-based routing helpers ───────────────────────────────────────────
+  const getPageFromPath = () => {
+    const path = window.location.pathname.replace(/^\//, '')
+    return path && VALID_PAGES.includes(path) ? path : null
   }
 
   const [page, setPage] = useState(() => {
-    const hashPage = getPageFromHash()
-    if (hashPage) return hashPage
+    const pathPage = getPageFromPath()
+    if (pathPage) return pathPage
     if (!load(LS.AUTH, false)) return 'landing'
     const ob = load(LS.ONBOARD, {})
     const doneOnboarding = ob && Object.keys(ob).length > 0
@@ -321,14 +321,16 @@ export function AppProvider({ children }) {
   const setDarkMode = (v) => { setDarkModeRaw(v); save(LS.DARK,v) }
   const navigate    = (to) => {
     setPage(to)
-    window.history.pushState({ page: to }, '', `#${to}`)
+    const url = to === 'landing' ? '/' : `/${to}`
+    window.history.pushState({ page: to }, '', url)
   }
 
   // Sync initial state into history so the first "back" works correctly
   useEffect(() => {
-    window.history.replaceState({ page }, '', `#${page}`)
+    const url = page === 'landing' ? '/' : `/${page}`
+    window.history.replaceState({ page }, '', url)
     const onPop = (e) => {
-      const pg = e.state?.page || getPageFromHash() || 'landing'
+      const pg = e.state?.page || getPageFromPath() || 'landing'
       setPage(pg)
     }
     window.addEventListener('popstate', onPop)
