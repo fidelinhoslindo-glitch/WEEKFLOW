@@ -1,49 +1,90 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
-
-const PLANS = {
-  monthly: { price: 19, label: '/mês', saving: null, currency: 'R$' },
-  yearly:  { price: 152, label: '/ano', saving: 'Economize R$76', currency: 'R$' },
-}
 
 const SB_URL = import.meta.env.VITE_SUPABASE_URL || ''
 const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
-const FREE_FEATURES = [
-  'Até 15 tarefas simultâneas',
-  'Planner semanal completo',
-  '1 FlowCircle (até 3 membros)',
-  '5 mensagens de IA por dia',
-  'App web + mobile + desktop',
-]
-
-const PRO_FEATURES = [
-  'Tudo do Free, mais:',
-  'Tarefas ilimitadas',
-  'IA ilimitada (Groq)',
-  'Circles ilimitados + membros ilimitados',
-  'Detector de Colisão',
-  'Janela Livre automática',
-  'FlowStreak completo + Escudos + Pacto de Semana',
-  'Previsão da Semana (todo domingo)',
-  'Analytics completo (90 dias)',
-  'Smart Calendar com sugestões de IA',
-  'Sync na nuvem (Supabase)',
-  'Google Calendar sync',
-  'Suporte prioritário',
-]
+const PLANS = {
+  free: {
+    name: 'Free',
+    monthly: 0,
+    yearly: 0,
+    color: 'neutral',
+    badge: 'Grátis para sempre',
+    cta: 'Continuar grátis',
+    features: [
+      '15 tarefas simultâneas',
+      'Planner semanal completo',
+      '1 FlowCircle (3 membros)',
+      'Pulso do Círculo + FlowStreak básico',
+      '5 mensagens de IA por dia',
+      'App web + desktop',
+    ],
+  },
+  pro: {
+    name: 'Pro',
+    monthly: 19,
+    yearly: 152,
+    color: 'primary',
+    badge: 'Mais popular',
+    cta: 'Começar Pro',
+    features: [
+      'Tarefas ilimitadas',
+      'Sync na nuvem (Supabase)',
+      'IA ilimitada (Groq)',
+      'Circles ilimitados',
+      'Detector de Colisão',
+      'Janela Livre automática',
+      'FlowStreak + Escudos + Pacto',
+      'Previsão da Semana',
+      'Analytics completo (90 dias)',
+      'Smart Calendar IA',
+      'Google Calendar sync',
+    ],
+  },
+  business: {
+    name: 'Business',
+    monthly: 49,
+    yearly: 392,
+    color: 'purple',
+    badge: 'Para times',
+    cta: 'Começar Business',
+    features: [
+      'Tudo do Pro, mais:',
+      'Membros ilimitados por círculo',
+      'Painel admin do time',
+      'Delegar tarefas por membro',
+      'Relatório semanal do time',
+      'Chama do Círculo avançada',
+      'Analytics do time (90 dias)',
+      'Suporte prioritário',
+    ],
+  },
+}
 
 export default function CheckoutPage() {
-  const { navigate, user, pushToast, setUser, confetti: _c, setConfetti } = useApp()
+  const { navigate, user, pushToast, setUser, setConfetti } = useApp()
   const sbToken = localStorage.getItem('wf_token')
 
-  const [billing,  setBilling]  = useState('monthly')
-  const [step,     setStep]     = useState('plan')   // plan | payment | success
-  const [loading,  setLoading]  = useState(false)
-  const [card,     setCard]     = useState({ number:'', exp:'', cvv:'', name: user?.name || '' })
-  const [errors,   setErrors]   = useState({})
+  const [billing,      setBilling]      = useState('monthly')
+  const [step,         setStep]         = useState('plan')   // plan | payment | success
+  const [selectedPlan, setSelectedPlan] = useState('pro')
+  const [loading,      setLoading]      = useState(false)
+  const [card,         setCard]         = useState({ number:'', exp:'', cvv:'', name: user?.name || '' })
+  const [errors,       setErrors]       = useState({})
 
-  const plan = PLANS[billing]
+  // Read pre-selected plan from localStorage (set from LandingPage)
+  useEffect(() => {
+    const stored = localStorage.getItem('wf_selected_plan')
+    if (stored && PLANS[stored]) {
+      setSelectedPlan(stored)
+      localStorage.removeItem('wf_selected_plan')
+    }
+  }, [])
+
+  const plan = PLANS[selectedPlan]
+  const price = billing === 'yearly' ? plan.yearly : plan.monthly
+  const saving = billing === 'yearly' ? Math.round(plan.monthly * 12 - plan.yearly) : 0
 
   function validate() {
     const e = {}
@@ -61,6 +102,8 @@ export default function CheckoutPage() {
     setLoading(true)
     await new Promise(r => setTimeout(r, 2000))
 
+    const planName = selectedPlan === 'business' ? 'Business' : 'Pro'
+
     try {
       if (SB_URL && sbToken && user?.id) {
         const expiresAt = billing === 'yearly'
@@ -70,11 +113,11 @@ export default function CheckoutPage() {
         await fetch(`${SB_URL}/rest/v1/profiles?id=eq.${user.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':`Bearer ${sbToken}` },
-          body: JSON.stringify({ plan:'Pro', plan_expires_at: expiresAt, plan_billing: billing })
+          body: JSON.stringify({ plan: planName, plan_expires_at: expiresAt, plan_billing: billing })
         })
       }
 
-      const updatedUser = { ...user, plan:'Pro' }
+      const updatedUser = { ...user, plan: planName }
       localStorage.setItem('wf_user', JSON.stringify(updatedUser))
       if (setUser) setUser(updatedUser)
       if (setConfetti) setConfetti(true)
@@ -95,6 +138,8 @@ export default function CheckoutPage() {
     return v.replace(/\D/g,'').slice(0,4).replace(/^(\d{2})(\d)/,'$1/$2')
   }
 
+  const planDisplayName = selectedPlan === 'business' ? 'Business' : 'Pro'
+
   // ── Success ──────────────────────────────────────────────────────────────────
   if (step === 'success') return (
     <div className="min-h-screen bg-bg-light dark:bg-bg-dark flex items-center justify-center p-4">
@@ -102,10 +147,13 @@ export default function CheckoutPage() {
         <div className="w-28 h-28 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
           <span className="material-symbols-outlined text-emerald-500 text-6xl" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
         </div>
-        <h1 className="text-4xl font-black mb-3">Você é Pro! 🎉</h1>
+        <h1 className="text-4xl font-black mb-3">Você é {planDisplayName}! 🎉</h1>
         <p className="text-slate-500 dark:text-slate-400 mb-8 text-lg">Todos os recursos foram desbloqueados. Aproveite!</p>
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 mb-8 text-left space-y-3">
-          {['Tarefas ilimitadas','IA ilimitada (Groq)','Circles ilimitados','Sync na nuvem','Analytics 90 dias','Suporte prioritário'].map(f => (
+          {(selectedPlan === 'business'
+            ? ['Tudo do Pro incluso','Membros ilimitados','Painel admin do time','Delegar tarefas','Relatório do time','Suporte prioritário']
+            : ['Tarefas ilimitadas','IA ilimitada (Groq)','Circles ilimitados','Sync na nuvem','Analytics 90 dias','Smart Calendar AI']
+          ).map(f => (
             <div key={f} className="flex items-center gap-3">
               <span className="material-symbols-outlined text-emerald-500 text-sm" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
               <span className="text-sm font-medium">{f}</span>
@@ -125,7 +173,7 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-bg-light dark:bg-bg-dark">
       {/* Header */}
       <div className="border-b border-slate-200 dark:border-slate-800 px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
           <button onClick={() => step==='payment' ? setStep('plan') : navigate('landing')}
             className="flex items-center gap-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
             <span className="material-symbols-outlined text-sm">arrow_back</span>
@@ -142,23 +190,36 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* Step 1: Plan selection — two card layout */}
+      {/* Step 1: Plan selection — 3 cards */}
       {step === 'plan' && (
-        <div className="max-w-4xl mx-auto px-4 py-12">
+        <div className="max-w-6xl mx-auto px-4 py-12">
           <h2 className="text-3xl font-black text-center mb-2">Escolha seu plano</h2>
-          <p className="text-center text-slate-500 dark:text-slate-400 mb-10">Comece grátis. Faça upgrade quando estiver pronto.</p>
+          <p className="text-center text-slate-500 dark:text-slate-400 mb-8">Comece grátis. Faça upgrade quando estiver pronto.</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Billing toggle */}
+          <div className="flex justify-center mb-10">
+            <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+              {[['monthly','Mensal'],['yearly','Anual']].map(([k, label]) => (
+                <button key={k} onClick={() => setBilling(k)}
+                  className={`relative px-5 py-2 rounded-lg text-sm font-bold transition-all ${billing === k ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                  {label}
+                  {k === 'yearly' && <span className="absolute -top-2.5 -right-3 bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">-33%</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Free card */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-5 sm:p-8 flex flex-col">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-6 sm:p-8 flex flex-col">
               <div className="inline-flex items-center gap-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-black px-3 py-1 rounded-full mb-5 self-start">
-                Grátis para sempre
+                {PLANS.free.badge}
               </div>
               <p className="text-sm font-black uppercase tracking-wider text-slate-400 mb-2">Free</p>
               <p className="text-4xl sm:text-5xl font-black mb-1">R$0</p>
               <p className="text-slate-400 text-sm mb-6">Sem cartão. Sem prazo.</p>
               <ul className="space-y-2.5 flex-1 mb-8">
-                {FREE_FEATURES.map(f => (
+                {PLANS.free.features.map(f => (
                   <li key={f} className="flex items-start gap-2.5 text-sm">
                     <span className="text-emerald-500 font-black mt-0.5 shrink-0">✓</span>
                     <span className="text-slate-600 dark:text-slate-300">{f}</span>
@@ -171,44 +232,59 @@ export default function CheckoutPage() {
               </button>
             </div>
 
-            {/* Pro card */}
-            <div className="bg-primary rounded-2xl p-5 sm:p-8 flex flex-col relative overflow-hidden shadow-2xl shadow-primary/30">
+            {/* Pro card — highlighted */}
+            <div className="bg-primary rounded-2xl p-6 sm:p-8 flex flex-col relative overflow-hidden shadow-2xl shadow-primary/30 border-2 border-primary">
               <div className="absolute top-5 right-5 bg-white text-primary text-xs font-black px-3 py-1 rounded-full">
                 Mais Popular
               </div>
-
-              {/* Billing toggle */}
-              <div className="flex bg-white/10 rounded-xl p-1 mb-5 self-start">
-                {Object.entries(PLANS).map(([k, p]) => (
-                  <button key={k} onClick={() => setBilling(k)}
-                    className={`relative px-4 py-1.5 rounded-lg text-xs font-black transition-all ${billing === k ? 'bg-white text-primary shadow-sm' : 'text-white/70 hover:text-white'}`}>
-                    {k === 'monthly' ? 'Mensal' : 'Anual'}
-                    {k === 'yearly' && <span className="absolute -top-2 -right-2 bg-emerald-400 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">-33%</span>}
-                  </button>
-                ))}
-              </div>
-
               <p className="text-sm font-black uppercase tracking-wider text-white/70 mb-2">Pro</p>
               <div className="mb-1">
-                <span className="text-4xl sm:text-5xl font-black text-white">{plan.currency}{plan.price}</span>
-                <span className="text-white/70 text-base ml-1">{plan.label}</span>
+                <span className="text-4xl sm:text-5xl font-black text-white">R${billing === 'yearly' ? PLANS.pro.yearly : PLANS.pro.monthly}</span>
+                <span className="text-white/70 text-base ml-1">{billing === 'yearly' ? '/ano' : '/mês'}</span>
               </div>
-              {plan.saving && (
-                <p className="text-emerald-300 text-xs font-bold mb-6">{plan.saving}</p>
-              )}
-              {!plan.saving && <p className="text-white/50 text-xs mb-6">{billing === 'yearly' ? '' : `ou R$152/ano — economize R$76`}</p>}
-
+              {billing === 'yearly'
+                ? <p className="text-emerald-300 text-xs font-bold mb-6">Economize R${Math.round(PLANS.pro.monthly * 12 - PLANS.pro.yearly)}</p>
+                : <p className="text-white/50 text-xs mb-6">ou R${PLANS.pro.yearly}/ano — economize R${Math.round(PLANS.pro.monthly * 12 - PLANS.pro.yearly)}</p>
+              }
               <ul className="space-y-2.5 flex-1 mb-8">
-                {PRO_FEATURES.map((f, i) => (
-                  <li key={f} className={`flex items-start gap-2.5 text-sm text-white ${i === 0 ? 'font-black text-white/60 text-xs uppercase tracking-wider pt-1' : ''}`}>
-                    {i > 0 && <span className="text-white/80 font-black mt-0.5 shrink-0">✓</span>}
+                {PLANS.pro.features.map(f => (
+                  <li key={f} className="flex items-start gap-2.5 text-sm text-white">
+                    <span className="text-white/80 font-black mt-0.5 shrink-0">✓</span>
                     {f}
                   </li>
                 ))}
               </ul>
-              <button onClick={() => setStep('payment')}
+              <button onClick={() => { setSelectedPlan('pro'); setStep('payment') }}
                 className="w-full py-3.5 rounded-xl bg-white text-primary font-black hover:bg-white/90 transition-all shadow-lg">
                 Começar Pro →
+              </button>
+            </div>
+
+            {/* Business card */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-purple-300 dark:border-purple-700 p-6 sm:p-8 flex flex-col relative overflow-hidden">
+              <div className="absolute top-5 right-5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-black px-3 py-1 rounded-full">
+                Para times
+              </div>
+              <p className="text-sm font-black uppercase tracking-wider text-purple-500 mb-2">Business</p>
+              <div className="mb-1">
+                <span className="text-4xl sm:text-5xl font-black text-purple-600 dark:text-purple-400">R${billing === 'yearly' ? PLANS.business.yearly : PLANS.business.monthly}</span>
+                <span className="text-purple-400 dark:text-purple-500 text-base ml-1">{billing === 'yearly' ? '/ano' : '/mês'}</span>
+              </div>
+              {billing === 'yearly'
+                ? <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold mb-6">Economize R${Math.round(PLANS.business.monthly * 12 - PLANS.business.yearly)}</p>
+                : <p className="text-slate-400 text-xs mb-6">ou R${PLANS.business.yearly}/ano — economize R${Math.round(PLANS.business.monthly * 12 - PLANS.business.yearly)}</p>
+              }
+              <ul className="space-y-2.5 flex-1 mb-8">
+                {PLANS.business.features.map((f, i) => (
+                  <li key={f} className={`flex items-start gap-2.5 text-sm ${i === 0 ? 'font-black text-purple-500 text-xs uppercase tracking-wider pt-1' : 'text-slate-600 dark:text-slate-300'}`}>
+                    {i > 0 && <span className="text-purple-500 font-black mt-0.5 shrink-0">✓</span>}
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button onClick={() => { setSelectedPlan('business'); setStep('payment') }}
+                className="w-full py-3.5 rounded-xl bg-purple-600 text-white font-black hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/25">
+                Começar Business →
               </button>
             </div>
           </div>
@@ -295,11 +371,11 @@ export default function CheckoutPage() {
               </div>
 
               <button onClick={handlePay} disabled={loading}
-                className="w-full py-4 bg-primary text-white font-bold rounded-2xl hover:opacity-90 shadow-lg shadow-primary/25 text-base disabled:opacity-50 flex items-center justify-center gap-2">
+                className={`w-full py-4 text-white font-bold rounded-2xl hover:opacity-90 shadow-lg text-base disabled:opacity-50 flex items-center justify-center gap-2 ${selectedPlan === 'business' ? 'bg-purple-600 shadow-purple-500/25' : 'bg-primary shadow-primary/25'}`}>
                 {loading ? (
                   <><span className="animate-spin material-symbols-outlined text-sm">refresh</span> Processando...</>
                 ) : (
-                  <><span className="material-symbols-outlined text-sm">lock</span> Confirmar pagamento — {plan.currency}{plan.price}{plan.label}</>
+                  <><span className="material-symbols-outlined text-sm">lock</span> Confirmar pagamento — R${price}{billing === 'yearly' ? '/ano' : '/mês'}</>
                 )}
               </button>
             </div>
@@ -307,39 +383,42 @@ export default function CheckoutPage() {
 
           {/* Right — order summary */}
           <div className="lg:col-span-2">
-            <div className="bg-primary rounded-2xl p-6 sticky top-24 text-white">
+            <div className={`rounded-2xl p-6 sticky top-24 text-white ${selectedPlan === 'business' ? 'bg-purple-600' : 'bg-primary'}`}>
               <h3 className="font-black text-base mb-5">Resumo do pedido</h3>
               <div className="flex items-center gap-3 mb-5 pb-5 border-b border-white/20">
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                   <img src="./favicon.png" alt="" className="w-8 h-8 rounded-lg" onError={e=>e.target.style.display='none'}/>
                 </div>
                 <div>
-                  <p className="font-black">WeekFlow Pro</p>
+                  <p className="font-black">WeekFlow {planDisplayName}</p>
                   <p className="text-xs text-white/60 capitalize">{billing === 'monthly' ? 'Mensal' : 'Anual'}</p>
                 </div>
               </div>
               <div className="space-y-2 mb-5">
                 <div className="flex justify-between text-sm">
                   <span className="text-white/70">Subtotal</span>
-                  <span className="font-semibold">{plan.currency}{plan.price}</span>
+                  <span className="font-semibold">R${price}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-white/70">Impostos</span>
                   <span className="font-semibold">R$0,00</span>
                 </div>
-                {billing === 'yearly' && (
+                {billing === 'yearly' && saving > 0 && (
                   <div className="flex justify-between text-sm text-emerald-300">
                     <span>Desconto anual</span>
-                    <span className="font-bold">-R$76</span>
+                    <span className="font-bold">-R${saving}</span>
                   </div>
                 )}
               </div>
               <div className="flex justify-between font-black text-lg border-t border-white/20 pt-4 mb-5">
                 <span>Total</span>
-                <span>{plan.currency}{plan.price}</span>
+                <span>R${price}</span>
               </div>
               <div className="space-y-2">
-                {['Tarefas ilimitadas','IA ilimitada','Circles ilimitados','Sync na nuvem'].map(f => (
+                {(selectedPlan === 'business'
+                  ? ['Tudo do Pro','Membros ilimitados','Painel do time','Delegar tarefas']
+                  : ['Tarefas ilimitadas','IA ilimitada','Circles ilimitados','Sync na nuvem']
+                ).map(f => (
                   <div key={f} className="flex items-center gap-2 text-xs text-white/70">
                     <span className="text-white font-black">✓</span>
                     {f}

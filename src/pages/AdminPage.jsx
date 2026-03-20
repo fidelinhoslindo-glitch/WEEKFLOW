@@ -31,7 +31,7 @@ export default function AdminPage() {
   const [loading,   setLoading]   = useState(true)
   const [search,    setSearch]    = useState('')
   const [updating,  setUpdating]  = useState(null)
-  const [stats,     setStats]     = useState({ total:0, pro:0, free:0, thisMonth:0 })
+  const [stats,     setStats]     = useState({ total:0, pro:0, business:0, free:0, thisMonth:0 })
   const [activeTab, setActiveTab] = useState('users')
 
   // Guard — only admins
@@ -56,12 +56,13 @@ export default function AdminPage() {
       const data = await sbFetch('profiles?select=*&order=created_at.desc')
       setUsers(Array.isArray(data) ? data : [])
       const pro  = data.filter(u => u.plan === 'Pro').length
+      const biz  = data.filter(u => u.plan === 'Business').length
       const thisMonth = data.filter(u => {
         const d = new Date(u.created_at)
         const now = new Date()
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
       }).length
-      setStats({ total: data.length, pro, free: data.length - pro, thisMonth })
+      setStats({ total: data.length, pro, business: biz, free: data.length - pro - biz, thisMonth })
     } catch(e) {
       pushToast('Could not load users. Check Supabase connection.', 'error')
     } finally {
@@ -77,8 +78,20 @@ export default function AdminPage() {
         body: JSON.stringify({ plan }),
       })
       setUsers(u => u.map(x => x.id === userId ? { ...x, plan } : x))
-      if (plan === 'Pro') setStats(s => ({ ...s, pro: s.pro+1, free: s.free-1 }))
-      else setStats(s => ({ ...s, pro: s.pro-1, free: s.free+1 }))
+      // Recalculate stats after plan change
+      setStats(s => {
+        const oldPlan = users.find(u => u.id === userId)?.plan || 'Free'
+        const counts = { ...s }
+        // Decrement old
+        if (oldPlan === 'Pro') counts.pro--
+        else if (oldPlan === 'Business') counts.business--
+        else counts.free--
+        // Increment new
+        if (plan === 'Pro') counts.pro++
+        else if (plan === 'Business') counts.business++
+        else counts.free++
+        return counts
+      })
       pushToast(`Plan updated to ${plan}!`, 'success')
     } catch(e) {
       pushToast('Failed to update plan.', 'error')
@@ -117,9 +130,10 @@ export default function AdminPage() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           {[
             { label:'Total Users',    value: stats.total,     icon:'group',         color:'text-primary bg-primary/10' },
+            { label:'Business',       value: stats.business,  icon:'business',      color:'text-purple-600 bg-purple-100 dark:bg-purple-900/20' },
             { label:'Pro Users',      value: stats.pro,       icon:'workspace_premium', color:'text-amber-600 bg-amber-100 dark:bg-amber-900/20' },
             { label:'Free Users',     value: stats.free,      icon:'person',        color:'text-slate-600 bg-slate-100 dark:bg-slate-800' },
             { label:'New This Month', value: stats.thisMonth, icon:'trending_up',   color:'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/20' },
@@ -195,20 +209,32 @@ export default function AdminPage() {
                       {u.created_at ? new Date(u.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '—'}
                     </p>
                     <div className="col-span-2">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black ${u.plan==='Pro'?'bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300':'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black ${
+                        u.plan==='Business' ? 'bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
+                        : u.plan==='Pro' ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                      }`}>
+                        {u.plan==='Business' && <span className="material-symbols-outlined text-xs" style={{fontVariationSettings:"'FILL' 1"}}>business</span>}
                         {u.plan==='Pro' && <span className="material-symbols-outlined text-xs" style={{fontVariationSettings:"'FILL' 1"}}>workspace_premium</span>}
                         {u.plan || 'Free'}
                       </span>
                     </div>
-                    <div className="col-span-2 flex gap-2">
-                      {u.plan !== 'Pro' ? (
+                    <div className="col-span-2 flex gap-1 flex-wrap">
+                      {u.plan !== 'Business' && (
+                        <button onClick={() => setPlan(u.id, 'Business')} disabled={updating===u.id}
+                          className="px-2 py-1 bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded-lg text-[10px] font-bold hover:bg-purple-200 transition-all disabled:opacity-50">
+                          {updating===u.id ? '...' : '→ Biz'}
+                        </button>
+                      )}
+                      {u.plan !== 'Pro' && (
                         <button onClick={() => setPlan(u.id, 'Pro')} disabled={updating===u.id}
-                          className="px-3 py-1.5 bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-bold hover:bg-amber-200 transition-all disabled:opacity-50">
+                          className="px-2 py-1 bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-lg text-[10px] font-bold hover:bg-amber-200 transition-all disabled:opacity-50">
                           {updating===u.id ? '...' : '→ Pro'}
                         </button>
-                      ) : (
+                      )}
+                      {u.plan !== 'Free' && u.plan && (
                         <button onClick={() => setPlan(u.id, 'Free')} disabled={updating===u.id}
-                          className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-xs font-bold hover:bg-red-50 hover:text-red-500 transition-all disabled:opacity-50">
+                          className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[10px] font-bold hover:bg-red-50 hover:text-red-500 transition-all disabled:opacity-50">
                           {updating===u.id ? '...' : '→ Free'}
                         </button>
                       )}
@@ -226,7 +252,7 @@ export default function AdminPage() {
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
               <h3 className="font-black mb-5">Plan Distribution</h3>
               <div className="space-y-4">
-                {[{label:'Pro', value:stats.pro, color:'bg-amber-400'}, {label:'Free', value:stats.free, color:'bg-slate-200 dark:bg-slate-700'}].map(p => (
+                {[{label:'Business', value:stats.business, color:'bg-purple-500'}, {label:'Pro', value:stats.pro, color:'bg-amber-400'}, {label:'Free', value:stats.free, color:'bg-slate-200 dark:bg-slate-700'}].map(p => (
                   <div key={p.label}>
                     <div className="flex justify-between text-sm mb-2">
                       <span className="font-semibold">{p.label}</span>

@@ -349,7 +349,9 @@ export function AppProvider({ children }) {
   }, [])
 
   // ── Plan helpers ──────────────────────────────────────────────────────────
-  const isPro      = user?.plan === 'Pro'
+  const userPlan   = user?.plan?.toLowerCase() || 'free'
+  const isPro      = userPlan === 'pro' || userPlan === 'business'
+  const isBusiness = userPlan === 'business'
   const FREE_LIMIT = FREE_TASK_LIMIT
 
   const canAddTask = () => {
@@ -368,17 +370,39 @@ export function AppProvider({ children }) {
       pomodoroHistory: false,
       cloudSync: false,
       smartCalendarAI: false,
-      desktopApp: true,
       googleCalSync: false,
-      unlimitedRecurrence: false,
       collisionDetector: false,
       freeWindow: false,
       flowStreakShields: false,
       weekPact: false,
       weekPreview: false,
       exportPDF: false,
+      teamPanel: false,
+      delegateTasks: false,
+      teamReport: false,
     },
     pro: {
+      tasks: Infinity,
+      notes: Infinity,
+      circles: Infinity,
+      circleMembers: 10,
+      aiMessagesPerDay: Infinity,
+      analyticsDays: 90,
+      pomodoroHistory: true,
+      cloudSync: true,
+      smartCalendarAI: true,
+      googleCalSync: true,
+      collisionDetector: true,
+      freeWindow: true,
+      flowStreakShields: true,
+      weekPact: true,
+      weekPreview: true,
+      exportPDF: true,
+      teamPanel: false,
+      delegateTasks: false,
+      teamReport: false,
+    },
+    business: {
       tasks: Infinity,
       notes: Infinity,
       circles: Infinity,
@@ -388,19 +412,20 @@ export function AppProvider({ children }) {
       pomodoroHistory: true,
       cloudSync: true,
       smartCalendarAI: true,
-      desktopApp: true,
       googleCalSync: true,
-      unlimitedRecurrence: true,
       collisionDetector: true,
       freeWindow: true,
       flowStreakShields: true,
       weekPact: true,
       weekPreview: true,
       exportPDF: true,
+      teamPanel: true,
+      delegateTasks: true,
+      teamReport: true,
     }
   }
 
-  const planLimits = isPro ? PLAN_LIMITS.pro : PLAN_LIMITS.free
+  const planLimits = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free
 
 
   // ── Notifications ─────────────────────────────────────────────────────────
@@ -554,7 +579,7 @@ export function AppProvider({ children }) {
       isSupabaseConfigured: () => SUPABASE_ENABLED,
       // nav
       page, navigate,
-      isPro, FREE_LIMIT, canAddTask, planLimits,
+      isPro, isBusiness, FREE_LIMIT, canAddTask, planLimits,
       // theme
       darkMode, setDarkMode,
       // tasks

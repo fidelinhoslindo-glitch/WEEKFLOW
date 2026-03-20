@@ -21,8 +21,17 @@ const T = {
     goToDashboard: 'My Dashboard',
     free: 'Free',
     pro: 'Pro',
+    business: 'Business',
     monthly: '/mo',
+    yearly: '/yr',
     mostPop: 'Most Popular',
+    forTeams: 'For teams',
+    freeForever: 'Free forever',
+    save33: 'Save 33% yearly',
+    noCreditCard: 'No credit card needed',
+    startFree: 'Get started free',
+    startPro: 'Start Pro',
+    startBusiness: 'Start Business',
     features: [
       { icon: 'sync',     title: 'Recurring Routines',   desc: 'Set your weekly habits once and let them flow automatically.' },
       { icon: 'palette',  title: 'Visual Balance',        desc: 'See how your time is distributed with color-coded categories.' },
@@ -56,8 +65,17 @@ const T = {
     goToDashboard: 'Meu Painel',
     free: 'Grátis',
     pro: 'Pro',
+    business: 'Business',
     monthly: '/mês',
+    yearly: '/ano',
     mostPop: 'Mais Popular',
+    forTeams: 'Para times',
+    freeForever: 'Grátis para sempre',
+    save33: 'Economize 33% no anual',
+    noCreditCard: 'Sem cartão de crédito',
+    startFree: 'Começar grátis',
+    startPro: 'Começar Pro',
+    startBusiness: 'Começar Business',
     features: [
       { icon: 'sync',     title: 'Rotinas Recorrentes',   desc: 'Configure seus hábitos semanais uma vez e deixe fluir automaticamente.' },
       { icon: 'palette',  title: 'Equilíbrio Visual',      desc: 'Veja como seu tempo é distribuído com categorias coloridas.' },
@@ -91,8 +109,17 @@ const T = {
     goToDashboard: 'Mi Panel',
     free: 'Gratis',
     pro: 'Pro',
+    business: 'Business',
     monthly: '/mes',
+    yearly: '/año',
     mostPop: 'Más Popular',
+    forTeams: 'Para equipos',
+    freeForever: 'Gratis para siempre',
+    save33: 'Ahorra 33% anual',
+    noCreditCard: 'Sin tarjeta de crédito',
+    startFree: 'Empezar gratis',
+    startPro: 'Empezar Pro',
+    startBusiness: 'Empezar Business',
     features: [
       { icon: 'sync',     title: 'Rutinas Recurrentes',   desc: 'Configura tus hábitos semanales una vez y déjalos fluir.' },
       { icon: 'palette',  title: 'Equilibrio Visual',      desc: 'Ve cómo se distribuye tu tiempo con categorías a color.' },
@@ -160,6 +187,7 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState(null)
   const [lang, setLang] = useState('pt')
   const [mobileMenu, setMobileMenu] = useState(false)
+  const [pricingBilling, setPricingBilling] = useState('monthly')
   const t = T[lang]
 
   const LANGS = [{ code:'pt', label:'PT' }, { code:'en', label:'EN' }, { code:'es', label:'ES' }]
@@ -411,42 +439,56 @@ export default function LandingPage() {
       {/* ── Pricing ── */}
       <section id="pricing" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <FadeIn className="text-center mb-16">
+          <FadeIn className="text-center mb-10">
             <h2 className="text-3xl md:text-5xl font-black mb-4">{t.pricingTitle}</h2>
             <p className="text-slate-500 dark:text-slate-400 text-lg">{t.pricingSub}</p>
           </FadeIn>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+
+          {/* Billing toggle */}
+          <div className="flex justify-center mb-12">
+            <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+              {[['monthly', lang === 'pt' ? 'Mensal' : lang === 'es' ? 'Mensual' : 'Monthly'],['yearly', lang === 'pt' ? 'Anual' : lang === 'es' ? 'Anual' : 'Yearly']].map(([k, label]) => (
+                <button key={k} onClick={() => setPricingBilling(k)}
+                  className={`relative px-5 py-2 rounded-lg text-sm font-bold transition-all ${pricingBilling === k ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                  {label}
+                  {k === 'yearly' && <span className="absolute -top-2.5 -right-3 bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">-33%</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {/* Free */}
             <FadeIn delay={0}>
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 h-full flex flex-col">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 h-full flex flex-col">
                 <div className="inline-flex items-center gap-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-black px-3 py-1 rounded-full mb-4 self-start">
-                  {lang === 'pt' ? 'Grátis para sempre' : lang === 'es' ? 'Gratis para siempre' : 'Free forever'}
+                  {t.freeForever}
                 </div>
                 <p className="text-sm font-black uppercase tracking-wider text-slate-400 mb-2">{t.free}</p>
                 <p className="text-4xl sm:text-5xl font-black mb-1">{lang === 'pt' ? 'R$0' : '$0'}</p>
-                <p className="text-slate-400 text-sm mb-6">{lang === 'pt' ? 'Sem cartão de crédito' : lang === 'es' ? 'Sin tarjeta de crédito' : 'No credit card needed'}</p>
+                <p className="text-slate-400 text-sm mb-6">{t.noCreditCard}</p>
                 <ul className="space-y-2.5 flex-1 mb-8">
                   {(lang === 'pt' ? [
-                    'Até 15 tarefas simultâneas',
+                    '15 tarefas simultâneas',
                     'Planner semanal completo',
-                    '1 FlowCircle (até 3 membros)',
+                    '1 FlowCircle (3 membros)',
                     'Pulso do Círculo + FlowStreak básico',
                     '5 mensagens de IA por dia',
-                    'App web + mobile + desktop',
+                    'App web + desktop',
                   ] : lang === 'es' ? [
-                    'Hasta 15 tareas simultáneas',
+                    '15 tareas simultáneas',
                     'Planificador semanal completo',
-                    '1 FlowCircle (hasta 3 miembros)',
+                    '1 FlowCircle (3 miembros)',
                     'Pulso del Círculo + FlowStreak básico',
                     '5 mensajes de IA por día',
-                    'App web + móvil + escritorio',
+                    'App web + escritorio',
                   ] : [
-                    'Up to 15 simultaneous tasks',
+                    '15 simultaneous tasks',
                     'Full weekly planner',
-                    '1 FlowCircle (up to 3 members)',
+                    '1 FlowCircle (3 members)',
                     'Circle Pulse + basic FlowStreak',
                     '5 AI messages per day',
-                    'Web + mobile + desktop app',
+                    'Web + desktop app',
                   ]).map(item => (
                     <li key={item} className="flex items-start gap-3 text-sm">
                       <span className="material-symbols-outlined text-emerald-500 text-sm mt-0.5 shrink-0" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
@@ -455,66 +497,124 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <button onClick={() => navigate('login')} className="w-full py-3 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary/5 transition-all">
-                  {lang === 'pt' ? 'Começar grátis' : lang === 'es' ? 'Empezar gratis' : 'Get started free'}
+                  {t.startFree}
                 </button>
               </div>
             </FadeIn>
-            {/* Pro */}
+
+            {/* Pro — highlighted */}
             <FadeIn delay={100}>
-              <div className="bg-primary rounded-2xl p-8 relative overflow-hidden h-full flex flex-col shadow-2xl shadow-primary/30">
+              <div className="bg-primary rounded-2xl p-6 sm:p-8 relative overflow-hidden h-full flex flex-col shadow-2xl shadow-primary/30 border-2 border-primary">
                 <div className="absolute top-4 right-4 bg-white/20 text-white text-xs font-black px-3 py-1 rounded-full">{t.mostPop}</div>
-                <div className="inline-flex items-center gap-1.5 bg-white/20 text-white text-xs font-black px-3 py-1 rounded-full mb-4 self-start">
-                  {lang === 'pt' ? 'Economize 33% no anual' : lang === 'es' ? 'Ahorra 33% anual' : 'Save 33% yearly'}
-                </div>
                 <p className="text-sm font-black uppercase tracking-wider text-white/70 mb-2">{t.pro}</p>
-                <p className="text-4xl sm:text-5xl font-black text-white mb-1">{lang === 'pt' ? 'R$19' : '$8'}<span className="text-lg font-medium text-white/70">{t.monthly}</span></p>
-                <p className="text-white/60 text-xs mb-6">{lang === 'pt' ? 'ou R$152/ano — economize R$76' : lang === 'es' ? 'o $64/año — ahorra $32' : 'or $64/year — save $32'}</p>
+                <p className="text-4xl sm:text-5xl font-black text-white mb-1">
+                  {lang === 'pt' ? (pricingBilling === 'yearly' ? 'R$152' : 'R$19') : (pricingBilling === 'yearly' ? '$64' : '$8')}
+                  <span className="text-lg font-medium text-white/70">{pricingBilling === 'yearly' ? t.yearly : t.monthly}</span>
+                </p>
+                {pricingBilling === 'yearly'
+                  ? <p className="text-emerald-300 text-xs font-bold mb-6">{lang === 'pt' ? 'Economize R$76' : lang === 'es' ? 'Ahorra $32' : 'Save $32'}</p>
+                  : <p className="text-white/60 text-xs mb-6">{lang === 'pt' ? 'ou R$152/ano — economize R$76' : lang === 'es' ? 'o $64/año — ahorra $32' : 'or $64/year — save $32'}</p>
+                }
                 <ul className="space-y-2.5 flex-1 mb-8">
                   {(lang === 'pt' ? [
-                    'Tudo do Free, mais:',
                     'Tarefas ilimitadas',
+                    'Sync na nuvem (Supabase)',
                     'IA ilimitada (Groq)',
-                    'Circles ilimitados + membros ilimitados',
+                    'Circles ilimitados',
                     'Detector de Colisão',
                     'Janela Livre automática',
-                    'FlowStreak completo + Escudos + Pacto',
+                    'FlowStreak + Escudos + Pacto',
+                    'Previsão da Semana',
                     'Analytics completo (90 dias)',
-                    'Smart Calendar com sugestões de IA',
-                    'Sync na nuvem + Google Calendar',
-                    'Suporte prioritário',
+                    'Smart Calendar IA',
+                    'Google Calendar sync',
                   ] : lang === 'es' ? [
-                    'Todo de Free, más:',
                     'Tareas ilimitadas',
+                    'Sync en la nube (Supabase)',
                     'IA ilimitada (Groq)',
-                    'Circles ilimitados + miembros',
+                    'Circles ilimitados',
                     'Detector de Colisión',
                     'Ventana Libre automática',
-                    'FlowStreak completo + Escudos',
+                    'FlowStreak + Escudos + Pacto',
+                    'Previsión de la Semana',
                     'Analytics completo (90 días)',
-                    'Smart Calendar con IA',
-                    'Sync en la nube + Google Calendar',
-                    'Soporte prioritario',
+                    'Smart Calendar IA',
+                    'Google Calendar sync',
                   ] : [
-                    'Everything in Free, plus:',
                     'Unlimited tasks',
+                    'Cloud sync (Supabase)',
                     'Unlimited AI (Groq)',
-                    'Unlimited Circles + members',
+                    'Unlimited Circles',
                     'Collision Detector',
                     'Automatic Free Window',
-                    'Full FlowStreak + Shields + Pact',
+                    'FlowStreak + Shields + Pact',
+                    'Week Preview',
                     'Full analytics (90 days)',
-                    'Smart Calendar AI suggestions',
-                    'Cloud sync + Google Calendar',
-                    'Priority support',
-                  ]).map((item, i) => (
-                    <li key={item} className={`flex items-start gap-3 text-sm text-white ${i === 0 ? 'font-black text-white/80 text-xs uppercase tracking-wider mt-1' : ''}`}>
-                      {i > 0 && <span className="material-symbols-outlined text-white/80 text-sm mt-0.5 shrink-0" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>}
+                    'Smart Calendar AI',
+                    'Google Calendar sync',
+                  ]).map(item => (
+                    <li key={item} className="flex items-start gap-3 text-sm text-white">
+                      <span className="material-symbols-outlined text-white/80 text-sm mt-0.5 shrink-0" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
                       {item}
                     </li>
                   ))}
                 </ul>
-                <button onClick={() => navigate('checkout')} className="w-full py-3 rounded-xl bg-white text-primary font-bold hover:bg-white/90 transition-all">
-                  {lang === 'pt' ? 'Começar Pro →' : lang === 'es' ? 'Empezar Pro →' : 'Start Pro →'}
+                <button onClick={() => { localStorage.setItem('wf_selected_plan','pro'); navigate('checkout') }} className="w-full py-3 rounded-xl bg-white text-primary font-bold hover:bg-white/90 transition-all">
+                  {t.startPro} →
+                </button>
+              </div>
+            </FadeIn>
+
+            {/* Business */}
+            <FadeIn delay={200}>
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-purple-300 dark:border-purple-700 p-6 sm:p-8 h-full flex flex-col relative overflow-hidden">
+                <div className="absolute top-4 right-4 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-black px-3 py-1 rounded-full">{t.forTeams}</div>
+                <p className="text-sm font-black uppercase tracking-wider text-purple-500 mb-2">{t.business}</p>
+                <p className="text-4xl sm:text-5xl font-black text-purple-600 dark:text-purple-400 mb-1">
+                  {lang === 'pt' ? (pricingBilling === 'yearly' ? 'R$392' : 'R$49') : (pricingBilling === 'yearly' ? '$152' : '$19')}
+                  <span className="text-lg font-medium text-purple-400 dark:text-purple-500">{pricingBilling === 'yearly' ? t.yearly : t.monthly}</span>
+                </p>
+                {pricingBilling === 'yearly'
+                  ? <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold mb-6">{lang === 'pt' ? 'Economize R$196' : lang === 'es' ? 'Ahorra $76' : 'Save $76'}</p>
+                  : <p className="text-slate-400 text-xs mb-6">{lang === 'pt' ? 'ou R$392/ano — economize R$196' : lang === 'es' ? 'o $152/año — ahorra $76' : 'or $152/year — save $76'}</p>
+                }
+                <ul className="space-y-2.5 flex-1 mb-8">
+                  {(lang === 'pt' ? [
+                    'Tudo do Pro, mais:',
+                    'Membros ilimitados por círculo',
+                    'Painel admin do time',
+                    'Delegar tarefas por membro',
+                    'Relatório semanal do time',
+                    'Chama do Círculo avançada',
+                    'Analytics do time (90 dias)',
+                    'Suporte prioritário',
+                  ] : lang === 'es' ? [
+                    'Todo de Pro, más:',
+                    'Miembros ilimitados por círculo',
+                    'Panel admin del equipo',
+                    'Delegar tareas por miembro',
+                    'Informe semanal del equipo',
+                    'Llama del Círculo avanzada',
+                    'Analytics del equipo (90 días)',
+                    'Soporte prioritario',
+                  ] : [
+                    'Everything in Pro, plus:',
+                    'Unlimited members per circle',
+                    'Team admin panel',
+                    'Delegate tasks per member',
+                    'Weekly team report',
+                    'Advanced Circle Flame',
+                    'Team analytics (90 days)',
+                    'Priority support',
+                  ]).map((item, i) => (
+                    <li key={item} className={`flex items-start gap-3 text-sm ${i === 0 ? 'font-black text-purple-500 text-xs uppercase tracking-wider mt-1' : 'text-slate-700 dark:text-slate-300'}`}>
+                      {i > 0 && <span className="material-symbols-outlined text-purple-500 text-sm mt-0.5 shrink-0" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>}
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <button onClick={() => { localStorage.setItem('wf_selected_plan','business'); navigate('checkout') }} className="w-full py-3 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/25">
+                  {t.startBusiness} →
                 </button>
               </div>
             </FadeIn>
