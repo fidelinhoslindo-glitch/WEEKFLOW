@@ -150,12 +150,12 @@ export default function CheckoutPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Free card */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-8 flex flex-col">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-5 sm:p-8 flex flex-col">
               <div className="inline-flex items-center gap-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-black px-3 py-1 rounded-full mb-5 self-start">
                 Grátis para sempre
               </div>
               <p className="text-sm font-black uppercase tracking-wider text-slate-400 mb-2">Free</p>
-              <p className="text-5xl font-black mb-1">R$0</p>
+              <p className="text-4xl sm:text-5xl font-black mb-1">R$0</p>
               <p className="text-slate-400 text-sm mb-6">Sem cartão. Sem prazo.</p>
               <ul className="space-y-2.5 flex-1 mb-8">
                 {FREE_FEATURES.map(f => (
@@ -172,7 +172,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* Pro card */}
-            <div className="bg-primary rounded-2xl p-8 flex flex-col relative overflow-hidden shadow-2xl shadow-primary/30">
+            <div className="bg-primary rounded-2xl p-5 sm:p-8 flex flex-col relative overflow-hidden shadow-2xl shadow-primary/30">
               <div className="absolute top-5 right-5 bg-white text-primary text-xs font-black px-3 py-1 rounded-full">
                 Mais Popular
               </div>
@@ -190,7 +190,7 @@ export default function CheckoutPage() {
 
               <p className="text-sm font-black uppercase tracking-wider text-white/70 mb-2">Pro</p>
               <div className="mb-1">
-                <span className="text-5xl font-black text-white">{plan.currency}{plan.price}</span>
+                <span className="text-4xl sm:text-5xl font-black text-white">{plan.currency}{plan.price}</span>
                 <span className="text-white/70 text-base ml-1">{plan.label}</span>
               </div>
               {plan.saving && (

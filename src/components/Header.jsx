@@ -10,7 +10,7 @@ function Header({ title, subtitle }) {
   const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })))
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between border-b border-primary/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-6 py-3 gap-4">
+    <header className="sticky top-0 z-40 flex items-center justify-between border-b border-primary/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-3 sm:px-6 py-3 gap-2 sm:gap-4">
       {/* Left: title */}
       <div className="min-w-0">
         {title && <h2 className="text-lg font-black text-slate-900 dark:text-white truncate">{title}</h2>}
@@ -76,7 +76,7 @@ function Header({ title, subtitle }) {
           </button>
 
           {showNotifs && (
-            <div className="absolute right-0 top-11 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden">
+            <div className="absolute right-0 top-11 w-[calc(100vw-2rem)] sm:w-80 max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden">
               <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
                 <h4 className="font-black text-sm">Notifications</h4>
                 <button onClick={markAllRead} className="text-xs text-primary font-semibold hover:underline">Mark all read</button>

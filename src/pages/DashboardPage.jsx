@@ -79,17 +79,17 @@ export default function DashboardPage() {
           </div>
 
           {/* Weekly Overview */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-8">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-bold">Current Week Overview</h3>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 sm:p-8">
+            <div className="flex items-center justify-between mb-6 sm:mb-8">
+              <h3 className="text-lg sm:text-xl font-bold">Current Week Overview</h3>
               <div className="flex items-center gap-2">
                 <button onClick={() => navigate('planner')} className="text-sm font-semibold text-primary hover:underline">View full planner →</button>
               </div>
             </div>
             <div className="space-y-5">
               {dayProgress.map(({ day, pct }) => (
-                <div key={day} className="flex items-center gap-6">
-                  <div className="w-28 shrink-0">
+                <div key={day} className="flex items-center gap-3 sm:gap-6">
+                  <div className="w-20 sm:w-28 shrink-0">
                     <p className="text-sm font-bold">{day}</p>
                     <p className="text-xs text-slate-400">{getTasksForDay(day).length} tasks</p>
                   </div>
@@ -105,7 +105,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Bottom grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
             {/* Smart Reminders */}
             <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
               <h4 className="font-bold mb-6 flex items-center gap-2">
@@ -138,7 +138,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Focus Session */}
-            <div className="bg-gradient-to-br from-primary to-indigo-700 p-8 rounded-3xl text-white flex flex-col justify-between overflow-hidden relative">
+            <div className="bg-gradient-to-br from-primary to-indigo-700 p-5 sm:p-8 rounded-3xl text-white flex flex-col justify-between overflow-hidden relative">
               <div className="relative z-10">
                 <h4 className="text-xl font-bold mb-2">Focus Session</h4>
                 <p className="text-white/80 text-sm leading-relaxed mb-6">Maximize productivity with a deep work session.</p>

@@ -148,7 +148,7 @@ export default function PomodoroPage() {
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header title="Pomodoro Timer" subtitle="Deep focus sessions" />
-        <main className="flex-1 p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
 
           {/* ── Left: Timer ── */}
           <div className="lg:col-span-2 space-y-6">

@@ -195,7 +195,7 @@ export default function LandingPage() {
               <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
                 {LANGS.map(l => (
                   <button key={l.code} onClick={() => setLang(l.code)}
-                    className={`px-2.5 py-1.5 text-xs font-bold transition-all ${lang===l.code?'bg-primary text-white':'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                    className={`px-2 sm:px-2.5 py-1.5 text-xs font-bold transition-all ${lang===l.code?'bg-primary text-white':'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     {l.label}
                   </button>
                 ))}
@@ -204,18 +204,20 @@ export default function LandingPage() {
               <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-xl hover:bg-primary/10 text-slate-500 dark:text-slate-400 transition-colors">
                 <span className="material-symbols-outlined text-sm">{darkMode?'light_mode':'dark_mode'}</span>
               </button>
-              <button onClick={() => navigate('download')} className="hidden sm:flex items-center gap-1.5 text-sm font-semibold px-4 py-2 hover:bg-primary/5 rounded-xl transition-all">
+              {/* Desktop-only buttons */}
+              <button onClick={() => navigate('download')} className="hidden md:flex items-center gap-1.5 text-sm font-semibold px-4 py-2 hover:bg-primary/5 rounded-xl transition-all">
                 <span className="material-symbols-outlined text-sm text-primary">download</span>Desktop
               </button>
               {!isLoggedIn && (
-                <button onClick={() => navigate('login')} className="hidden sm:block text-sm font-semibold px-4 py-2 hover:bg-primary/5 rounded-xl transition-all">{t.login}</button>
+                <button onClick={() => navigate('login')} className="hidden md:block text-sm font-semibold px-4 py-2 hover:bg-primary/5 rounded-xl transition-all">{t.login}</button>
               )}
+              {/* CTA - shorter text on mobile */}
               {isLoggedIn ? (
-                <button onClick={() => navigate('dashboard')} className="bg-primary text-white text-sm font-bold px-5 py-2 rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-all flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm">dashboard</span>{t.goToDashboard}
+                <button onClick={() => navigate('dashboard')} className="bg-primary text-white text-sm font-bold px-3 sm:px-5 py-2 rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-all flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm">dashboard</span><span className="hidden sm:inline">{t.goToDashboard}</span><span className="sm:hidden">App</span>
                 </button>
               ) : (
-                <button onClick={handleStart} className="bg-primary text-white text-sm font-bold px-5 py-2 rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-all">{t.getStarted}</button>
+                <button onClick={handleStart} className="bg-primary text-white text-sm font-bold px-3 sm:px-5 py-2 rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-all"><span className="hidden sm:inline">{t.getStarted}</span><span className="sm:hidden">{lang==='pt'?'Entrar':lang==='es'?'Entrar':'Start'}</span></button>
               )}
             </div>
           </div>
@@ -223,7 +225,7 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden pt-20 pb-28 lg:pt-36 lg:pb-44">
+      <section className="relative overflow-hidden pt-12 pb-16 sm:pt-20 sm:pb-28 lg:pt-36 lg:pb-44">
         {/* Animated background orbs */}
         <div className="absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-primary/6 blur-[120px] -top-40 -left-40 animate-pulse" style={{animationDuration:'8s'}}/>
@@ -243,7 +245,7 @@ export default function LandingPage() {
           </div>
 
           {/* Headline with typewriter feel */}
-          <h1 className="text-5xl md:text-7xl font-black leading-[1.08] tracking-tight mb-6"
+          <h1 className="text-3xl sm:text-5xl md:text-7xl font-black leading-[1.08] tracking-tight mb-6"
             style={{animation:'fadeUp 0.7s ease 0.1s both'}}>
             {t.heroTitle1}<br/>
             <span className="text-primary relative">
@@ -254,7 +256,7 @@ export default function LandingPage() {
             </span>
           </h1>
 
-          <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 dark:text-slate-400 mb-10 leading-relaxed"
+          <p className="max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-slate-500 dark:text-slate-400 mb-8 sm:mb-10 leading-relaxed px-2"
             style={{animation:'fadeUp 0.7s ease 0.2s both'}}>
             {t.heroSub}
           </p>
@@ -274,14 +276,14 @@ export default function LandingPage() {
           </div>
 
           {/* Stats row */}
-          <div className="flex items-center justify-center gap-10 mb-16" style={{animation:'fadeUp 0.7s ease 0.35s both'}}>
+          <div className="flex items-center justify-center gap-6 sm:gap-10 mb-12 sm:mb-16" style={{animation:'fadeUp 0.7s ease 0.35s both'}}>
             {[
               { val:50000, suf:'+', label: lang==='pt'?'Usuários':lang==='es'?'Usuarios':'Users' },
               { val:4, suf:'.9★', label: lang==='pt'?'Avaliação':lang==='es'?'Valoración':'Rating' },
               { val:99, suf:'%', label: lang==='pt'?'Uptime':lang==='es'?'Tiempo activo':'Uptime' },
             ].map((s, i) => (
               <div key={i} className="text-center">
-                <p className="text-2xl font-black text-slate-900 dark:text-white"><Counter to={s.val} suffix={s.suf}/></p>
+                <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white"><Counter to={s.val} suffix={s.suf}/></p>
                 <p className="text-xs text-slate-400 font-medium mt-0.5">{s.label}</p>
               </div>
             ))}
@@ -341,7 +343,8 @@ export default function LandingPage() {
                   <span className="text-xs text-slate-400 font-mono">weekflow.app</span>
                 </div>
               </div>
-              <div className="p-5 grid grid-cols-7 gap-2" style={{height:280}}>
+              {/* Desktop: full 7-col mockup */}
+              <div className="hidden sm:grid p-5 grid-cols-7 gap-2" style={{height:280}}>
                 {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((day, i) => (
                   <div key={day} className="flex flex-col gap-1.5">
                     <p className="text-[10px] font-bold text-slate-400 text-center">{day}</p>
@@ -360,6 +363,20 @@ export default function LandingPage() {
                         <div className="h-8 rounded-xl bg-rose-100 dark:bg-rose-900/30 border border-rose-200/50"/>
                       </>
                     )}
+                  </div>
+                ))}
+              </div>
+              {/* Mobile: simplified 5-col mockup */}
+              <div className="sm:hidden grid p-3 grid-cols-5 gap-1.5" style={{height:180}}>
+                {['Mon','Tue','Wed','Thu','Fri'].map((day, i) => (
+                  <div key={day} className="flex flex-col gap-1">
+                    <p className="text-[9px] font-bold text-slate-400 text-center">{day}</p>
+                    <div className="h-10 rounded-lg bg-primary/10 border border-primary/20 p-1 flex flex-col gap-0.5">
+                      <div className="h-1 w-3/4 bg-primary/50 rounded-full"/>
+                      <div className="h-1 w-1/2 bg-primary/25 rounded-full"/>
+                    </div>
+                    <div className="h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200/50 dark:border-emerald-700/30"/>
+                    {i%2===0 && <div className="h-6 rounded-lg bg-blue-100 dark:bg-blue-900/30 border border-blue-200/50 dark:border-blue-700/30"/>}
                   </div>
                 ))}
               </div>
@@ -406,7 +423,7 @@ export default function LandingPage() {
                   {lang === 'pt' ? 'Grátis para sempre' : lang === 'es' ? 'Gratis para siempre' : 'Free forever'}
                 </div>
                 <p className="text-sm font-black uppercase tracking-wider text-slate-400 mb-2">{t.free}</p>
-                <p className="text-5xl font-black mb-1">{lang === 'pt' ? 'R$0' : '$0'}</p>
+                <p className="text-4xl sm:text-5xl font-black mb-1">{lang === 'pt' ? 'R$0' : '$0'}</p>
                 <p className="text-slate-400 text-sm mb-6">{lang === 'pt' ? 'Sem cartão de crédito' : lang === 'es' ? 'Sin tarjeta de crédito' : 'No credit card needed'}</p>
                 <ul className="space-y-2.5 flex-1 mb-8">
                   {(lang === 'pt' ? [
@@ -450,7 +467,7 @@ export default function LandingPage() {
                   {lang === 'pt' ? 'Economize 33% no anual' : lang === 'es' ? 'Ahorra 33% anual' : 'Save 33% yearly'}
                 </div>
                 <p className="text-sm font-black uppercase tracking-wider text-white/70 mb-2">{t.pro}</p>
-                <p className="text-5xl font-black text-white mb-1">{lang === 'pt' ? 'R$19' : '$8'}<span className="text-lg font-medium text-white/70">{t.monthly}</span></p>
+                <p className="text-4xl sm:text-5xl font-black text-white mb-1">{lang === 'pt' ? 'R$19' : '$8'}<span className="text-lg font-medium text-white/70">{t.monthly}</span></p>
                 <p className="text-white/60 text-xs mb-6">{lang === 'pt' ? 'ou R$152/ano — economize R$76' : lang === 'es' ? 'o $64/año — ahorra $32' : 'or $64/year — save $32'}</p>
                 <ul className="space-y-2.5 flex-1 mb-8">
                   {(lang === 'pt' ? [
@@ -537,7 +554,7 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-primary"/>
           <div className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_50%,rgba(255,255,255,0.1)_0%,transparent_100%)]"/>
           <div className="relative max-w-3xl mx-auto px-4 text-center">
-            <h2 className="text-4xl md:text-6xl font-black text-white mb-6 leading-tight">
+            <h2 className="text-2xl sm:text-4xl md:text-6xl font-black text-white mb-6 leading-tight">
               {lang==='pt'?'Sua semana mais organizada começa hoje.':lang==='es'?'Tu semana más organizada empieza hoy.':'Your most organized week starts today.'}
             </h2>
             <button onClick={isLoggedIn ? () => navigate('dashboard') : handleStart}
