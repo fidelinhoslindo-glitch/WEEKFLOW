@@ -295,15 +295,21 @@ export function AppProvider({ children }) {
   const currentWeekLabel = weekLabel(weekOffset)
 
   // ── UI ────────────────────────────────────────────────────────────────────
-  // ── Path-based routing helpers ───────────────────────────────────────────
-  const getPageFromPath = () => {
+  // ── Routing helpers (path-based on web, hash-based on Electron) ─────────
+  const isElectron = typeof window !== 'undefined' && !!window.electron
+
+  const getPageFromUrl = () => {
+    if (isElectron) {
+      const hash = window.location.hash.replace('#', '')
+      return hash && VALID_PAGES.includes(hash) ? hash : null
+    }
     const path = window.location.pathname.replace(/^\//, '')
     return path && VALID_PAGES.includes(path) ? path : null
   }
 
   const [page, setPage] = useState(() => {
-    const pathPage = getPageFromPath()
-    if (pathPage) return pathPage
+    const urlPage = getPageFromUrl()
+    if (urlPage) return urlPage
     if (!load(LS.AUTH, false)) return 'landing'
     const ob = load(LS.ONBOARD, {})
     const doneOnboarding = ob && Object.keys(ob).length > 0
@@ -321,16 +327,24 @@ export function AppProvider({ children }) {
   const setDarkMode = (v) => { setDarkModeRaw(v); save(LS.DARK,v) }
   const navigate    = (to) => {
     setPage(to)
-    const url = to === 'landing' ? '/' : `/${to}`
-    window.history.pushState({ page: to }, '', url)
+    if (isElectron) {
+      window.history.pushState({ page: to }, '', `#${to}`)
+    } else {
+      const url = to === 'landing' ? '/' : `/${to}`
+      window.history.pushState({ page: to }, '', url)
+    }
   }
 
   // Sync initial state into history so the first "back" works correctly
   useEffect(() => {
-    const url = page === 'landing' ? '/' : `/${page}`
-    window.history.replaceState({ page }, '', url)
+    if (isElectron) {
+      window.history.replaceState({ page }, '', `#${page}`)
+    } else {
+      const url = page === 'landing' ? '/' : `/${page}`
+      window.history.replaceState({ page }, '', url)
+    }
     const onPop = (e) => {
-      const pg = e.state?.page || getPageFromPath() || 'landing'
+      const pg = e.state?.page || getPageFromUrl() || 'landing'
       setPage(pg)
     }
     window.addEventListener('popstate', onPop)
