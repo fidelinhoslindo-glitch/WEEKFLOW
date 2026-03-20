@@ -4,6 +4,10 @@ import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { CIRCLE_MODES, loadCircles, saveCircles, generateCircleInviteLink } from '../utils/flowCircle'
 import { isSupabaseConfigured, sb } from '../utils/supabase'
+import CollisionDetector from '../components/flowcircle/CollisionDetector'
+import CirclePulse from '../components/flowcircle/CirclePulse'
+import FreeWindow from '../components/flowcircle/FreeWindow'
+import FlowStreak from '../components/flowcircle/FlowStreak'
 
 function StatusDot({ status }) {
   const c = { online:'bg-emerald-500', away:'bg-amber-400', busy:'bg-red-500', offline:'bg-slate-400' }
@@ -255,7 +259,23 @@ export default function FlowCirclePage() {
 
                 {/* RODA */}
                 {activeTab==='roda'&&(
-                  <div className="flex flex-col lg:flex-row gap-8 items-start">
+                  <div className="space-y-6">
+                    {/* FlowStreak + Circle Flame */}
+                    <FlowStreak circle={circle}/>
+
+                    {/* Collision alerts */}
+                    <CollisionDetector circle={circle}/>
+
+                    {/* Free Windows */}
+                    <FreeWindow circle={circle} onCreateEvent={(ev) => {
+                      const newEv = { id:'ev_'+Date.now(), title:ev.title, date:ev.date, time:ev.time, duration:ev.duration, shared:true, color:circle.color||'#6467f2', circle_id:circle.id }
+                      persist(circles.map(c=>c.id===circle.id?{...c,events:[...(c.events||[]),newEv]}:c))
+                    }}/>
+
+                    {/* Circle Pulse */}
+                    <CirclePulse circle={circle}/>
+
+                    <div className="flex flex-col lg:flex-row gap-8 items-start">
                     <div className="flex flex-col items-center gap-4">
                       <Roda circle={circle} onMemberClick={m=>pushToast(`${m.name} is ${m.status}`,'info')}/>
                     </div>
@@ -306,6 +326,7 @@ export default function FlowCirclePage() {
                         </div>
                       </div>
                     </div>
+                  </div>
                   </div>
                 )}
 
