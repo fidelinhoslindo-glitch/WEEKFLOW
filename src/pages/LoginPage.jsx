@@ -127,12 +127,6 @@ export default function LoginPage() {
     }
   }
 
-  // ── Demo mode ─────────────────────────────────────────────────────────────
-  const handleDemo = () => {
-    login('Demo User', 'demo@weekflow.app', null)
-    navigate(getInitialPage())
-  }
-
   const tabs = [['signin','Sign In'],['signup','Sign Up']]
 
   return (
@@ -281,13 +275,6 @@ export default function LoginPage() {
               Apple
             </button>
           </div>
-
-          {/* Demo */}
-          <button onClick={handleDemo}
-            className="w-full py-2.5 border border-white/[0.07] rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-300 hover:border-white/[0.12] transition-all flex items-center justify-center gap-2">
-            <span className="material-symbols-outlined text-sm">play_circle</span>
-            Try Demo (no account needed)
-          </button>
 
           {/* Supabase status */}
           <div className="flex items-center justify-center gap-1.5 mt-5">
