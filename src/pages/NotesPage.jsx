@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
+import UpgradeModal from '../components/UpgradeModal'
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 const LS_NOTES = 'wf_notes'
@@ -241,15 +242,21 @@ function NoteEditor({ note, onSave, onClose }) {
 
 // ── Main Notes page ───────────────────────────────────────────────────────────
 export default function NotesPage() {
+  const { planLimits, isPro } = useApp()
   const [notes,     setNotes]     = useState(loadNotes)
   const [editing,   setEditing]   = useState(null)
   const [search,    setSearch]    = useState('')
   const [filterType,setFilterType]= useState('all')
   const [view,      setView]      = useState('grid') // grid | list
+  const [showUpgrade, setShowUpgrade] = useState(false)
 
   const persist = (updated) => { setNotes(updated); saveNotes(updated) }
 
   const createNote = (type = 'note') => {
+    if (!isPro && notes.length >= planLimits.notes) {
+      setShowUpgrade(true)
+      return
+    }
     const note = {
       id: Date.now(), type, title: '', color: 'default',
       content: '', pinned: false, createdAt: new Date().toISOString(), todos: [],
@@ -403,6 +410,11 @@ export default function NotesPage() {
       {/* Editor modal */}
       {editing && (
         <NoteEditor note={editing} onSave={saveNote} onClose={() => setEditing(null)} />
+      )}
+
+      {/* Upgrade modal */}
+      {showUpgrade && (
+        <UpgradeModal feature={`mais de ${planLimits.notes} notas`} onClose={() => setShowUpgrade(false)} />
       )}
     </div>
   )

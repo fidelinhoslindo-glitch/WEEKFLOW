@@ -494,7 +494,7 @@ export function CalendarPage() {
 }
 
 export function AnalyticsPage() {
-  const { tasks, weekDays, categoryColors, navigate } = useApp()
+  const { tasks, weekDays, categoryColors, navigate, planLimits, isPro } = useApp()
 
   // ── Computed stats ────────────────────────────────────────────────────────
   const total        = tasks.length
@@ -537,6 +537,22 @@ export function AnalyticsPage() {
       <div className="flex-1 flex flex-col">
         <Header title="Analytics" subtitle="Insights from your real task data" />
         <main className="flex-1 p-4 lg:p-8 space-y-6 overflow-y-auto">
+          {/* Free plan banner */}
+          {!isPro && (
+            <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-2xl p-4">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">📊</span>
+                <div>
+                  <p className="text-sm font-black">Mostrando últimos {planLimits.analyticsDays} dias</p>
+                  <p className="text-xs text-slate-500">Ver 90 dias de histórico com o plano Pro</p>
+                </div>
+              </div>
+              <button onClick={() => navigate('checkout')}
+                className="px-4 py-2 bg-primary text-white text-xs font-black rounded-xl hover:opacity-90 shrink-0">
+                Ver Pro →
+              </button>
+            </div>
+          )}
           <div className="flex justify-end">
             <button onClick={() => navigate('settings')}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border-2 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-primary/40 hover:text-primary transition-all">

@@ -8,6 +8,7 @@ import CollisionDetector from '../components/flowcircle/CollisionDetector'
 import CirclePulse from '../components/flowcircle/CirclePulse'
 import FreeWindow from '../components/flowcircle/FreeWindow'
 import FlowStreak from '../components/flowcircle/FlowStreak'
+import UpgradeModal from '../components/UpgradeModal'
 
 function StatusDot({ status }) {
   const c = { online:'bg-emerald-500', away:'bg-amber-400', busy:'bg-red-500', offline:'bg-slate-400' }
@@ -169,12 +170,13 @@ function EventCard({ ev, onDelete, onPin }) {
 }
 
 export default function FlowCirclePage() {
-  const {pushToast,user} = useApp()
+  const {pushToast,user,planLimits,isPro} = useApp()
   const sbToken = typeof window!=='undefined'?localStorage.getItem('wf_token'):null
   const userId  = user?.id
   const [circles,setCircles]         = useState(loadCircles)
   const [activeId,setActiveId]       = useState(()=>loadCircles()[0]?.id||null)
   const [showCreate,setShowCreate]   = useState(false)
+  const [showUpgrade,setShowUpgrade] = useState(false)
   const [activeTab,setActiveTab]     = useState('roda')
   const [inviteEmail,setInviteEmail] = useState('')
   const [inviteLink,setInviteLink]   = useState('')
@@ -289,7 +291,7 @@ export default function FlowCirclePage() {
           {/* ── Circle list ── */}
           <aside className="w-64 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800">
-              <button onClick={()=>setShowCreate(true)} className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 shadow-lg shadow-primary/25">
+              <button onClick={()=>{ if(!isPro && circles.length >= planLimits.circles){ setShowUpgrade(true); return } setShowCreate(true) }} className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 shadow-lg shadow-primary/25">
                 <span className="material-symbols-outlined text-sm">add</span> New Circle
               </button>
             </div>
@@ -533,6 +535,7 @@ export default function FlowCirclePage() {
         </div>
       </div>
       {showCreate&&<CreateModal onClose={()=>setShowCreate(false)} onCreate={createCircle}/>}
+      {showUpgrade&&<UpgradeModal feature="múltiplos FlowCircles" onClose={()=>setShowUpgrade(false)}/>}
 
       {/* ── New Event Modal ── */}
       {showEvModal&&circle&&(

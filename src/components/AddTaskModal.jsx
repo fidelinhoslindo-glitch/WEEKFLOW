@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
+import UpgradeModal from './UpgradeModal'
 
 const CATEGORIES = ['Work', 'Gym', 'Study', 'Rest', 'Other']
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -87,12 +88,13 @@ function TimePicker({ value, onChange }) {
 }
 
 export default function AddTaskModal() {
-  const { setShowAddTask, addTasks, TASK_COLORS } = useApp()
+  const { setShowAddTask, addTasks, TASK_COLORS, tasks, planLimits, isPro } = useApp()
   const [form, setForm] = useState({
     title: '', category: 'Work', days: ['Monday'], time: '09:00', duration: 60, priority: 'medium', notes: '', color: '', recurring: false
   })
   const [saved, setSaved] = useState(false)
   const [showTimePicker, setShowTimePicker] = useState(false)
+  const [showUpgrade, setShowUpgrade] = useState(false)
 
   const toggleDay = (day) => {
     setForm(f => ({
@@ -103,6 +105,10 @@ export default function AddTaskModal() {
 
   const handleSubmit = () => {
     if (!form.title.trim() || form.days.length === 0) return
+    if (!isPro && tasks.length >= planLimits.tasks) {
+      setShowUpgrade(true)
+      return
+    }
     // Create one task per selected day
     // Build one independent task per day — each gets its own unique id via addTasks
     const newTasks = form.days.map(day => ({ ...form, day }))
@@ -118,6 +124,7 @@ export default function AddTaskModal() {
   const displayTime = `${String(h12).padStart(2,'0')}:${m} ${ampm}`
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
 
@@ -320,5 +327,10 @@ export default function AddTaskModal() {
         </div>
       </div>
     </div>
+
+    {showUpgrade && (
+      <UpgradeModal feature={`mais de ${planLimits.tasks} tarefas`} onClose={() => setShowUpgrade(false)} />
+    )}
+    </>
   )
 }

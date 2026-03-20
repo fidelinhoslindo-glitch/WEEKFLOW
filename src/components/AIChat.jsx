@@ -99,12 +99,17 @@ const CAT_STYLE = {
   Other: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300',
 }
 
+const todayKey = () => `wf_ai_count_${new Date().toISOString().split('T')[0]}`
+const getAiCount = () => { try { return parseInt(localStorage.getItem(todayKey()) || '0') } catch { return 0 } }
+const incAiCount = () => { try { localStorage.setItem(todayKey(), String(getAiCount() + 1)) } catch {} }
+
 export default function AIChat({ onClose }) {
-  const { addTasks, pushToast, tasks, completionRate, navigate, darkMode, setDarkMode, toggleTask, deleteTask, weekDays, user } = useApp()
+  const { addTasks, pushToast, tasks, completionRate, navigate, darkMode, setDarkMode, toggleTask, deleteTask, weekDays, user, planLimits, isPro } = useApp()
   const [messages, setMessages] = useState([])
   const [input,   setInput]   = useState('')
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState(null)
+  const [aiCount, setAiCount] = useState(getAiCount)
   const bottomRef = useRef(null)
   const inputRef  = useRef(null)
 
@@ -175,10 +180,19 @@ ${taskSummary ? '\nAll tasks:\n' + taskSummary : 'No tasks yet.'}`
   const send = async (text) => {
     const msg = (text || input).trim()
     if (!msg || loading) return
+
+    // Daily limit check for free users
+    if (!isPro && aiCount >= planLimits.aiMessagesPerDay) {
+      setMessages(prev => [...prev, { role: 'assistant', text: `🔒 Limite diário de ${planLimits.aiMessagesPerDay} mensagens atingido. Faça upgrade para Pro para IA ilimitada.`, raw: '', parsed: null }])
+      return
+    }
+
     setInput('')
     setPreview(null)
     setMessages(prev => [...prev, { role: 'user', text: msg }])
     setLoading(true)
+    incAiCount()
+    setAiCount(getAiCount())
 
     try {
       const ctx = buildContext()

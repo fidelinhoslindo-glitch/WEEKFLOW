@@ -13,7 +13,7 @@ function statusColor(status) {
 }
 
 export default function SmartCalendarPage() {
-  const { tasks, addTask, addTasks, updateTask, pushToast, setShowAddTask } = useApp()
+  const { tasks, addTask, addTasks, updateTask, pushToast, setShowAddTask, planLimits, isPro, navigate } = useApp()
 
   const [month, setMonth] = useState(new Date())
   const [selected, setSelected] = useState(null)
@@ -101,7 +101,22 @@ export default function SmartCalendarPage() {
         <main className="flex-1 p-4 lg:p-6 space-y-5 overflow-y-auto">
 
           {/* ── Smart Suggestions banner ── */}
-          {showSuggestions && smartSuggestions.length > 0 && (
+          {!isPro && (
+            <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-2xl p-4">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🔒</span>
+                <div>
+                  <p className="text-sm font-black">Sugestões de IA desativadas</p>
+                  <p className="text-xs text-slate-500">Faça upgrade para Pro para receber sugestões inteligentes baseadas nos seus hábitos</p>
+                </div>
+              </div>
+              <button onClick={() => navigate('checkout')}
+                className="px-4 py-2 bg-primary text-white text-xs font-black rounded-xl hover:opacity-90 shrink-0">
+                Ver Pro →
+              </button>
+            </div>
+          )}
+          {isPro && showSuggestions && smartSuggestions.length > 0 && (
             <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 rounded-2xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">

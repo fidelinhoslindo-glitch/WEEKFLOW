@@ -357,6 +357,51 @@ export function AppProvider({ children }) {
     return tasks.length < FREE_LIMIT
   }
 
+  const PLAN_LIMITS = {
+    free: {
+      tasks: 15,
+      notes: 10,
+      circles: 1,
+      circleMembers: 3,
+      aiMessagesPerDay: 5,
+      analyticsDays: 7,
+      pomodoroHistory: false,
+      cloudSync: false,
+      smartCalendarAI: false,
+      desktopApp: true,
+      googleCalSync: false,
+      unlimitedRecurrence: false,
+      collisionDetector: false,
+      freeWindow: false,
+      flowStreakShields: false,
+      weekPact: false,
+      weekPreview: false,
+      exportPDF: false,
+    },
+    pro: {
+      tasks: Infinity,
+      notes: Infinity,
+      circles: Infinity,
+      circleMembers: Infinity,
+      aiMessagesPerDay: Infinity,
+      analyticsDays: 90,
+      pomodoroHistory: true,
+      cloudSync: true,
+      smartCalendarAI: true,
+      desktopApp: true,
+      googleCalSync: true,
+      unlimitedRecurrence: true,
+      collisionDetector: true,
+      freeWindow: true,
+      flowStreakShields: true,
+      weekPact: true,
+      weekPreview: true,
+      exportPDF: true,
+    }
+  }
+
+  const planLimits = isPro ? PLAN_LIMITS.pro : PLAN_LIMITS.free
+
 
   // ── Notifications ─────────────────────────────────────────────────────────
   const [notifications, setNotifications] = useState([
@@ -509,7 +554,7 @@ export function AppProvider({ children }) {
       isSupabaseConfigured: () => SUPABASE_ENABLED,
       // nav
       page, navigate,
-      isPro, FREE_LIMIT, canAddTask,
+      isPro, FREE_LIMIT, canAddTask, planLimits,
       // theme
       darkMode, setDarkMode,
       // tasks

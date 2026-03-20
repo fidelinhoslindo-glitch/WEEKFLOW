@@ -402,36 +402,103 @@ export default function LandingPage() {
             {/* Free */}
             <FadeIn delay={0}>
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 h-full flex flex-col">
-                <p className="text-sm font-black uppercase tracking-wider text-slate-400 mb-3">{t.free}</p>
-                <p className="text-5xl font-black mb-1">$0</p>
-                <p className="text-slate-400 text-sm mb-8">{t.monthly === '/mo' ? 'forever free' : t.monthly === '/mês' ? 'sempre grátis' : 'siempre gratis'}</p>
-                <ul className="space-y-3 flex-1 mb-8">
-                  {['7 tasks/week','Basic planner','FlowCircle (1 circle)','Mobile + Desktop'].map(item => (
-                    <li key={item} className="flex items-center gap-3 text-sm">
-                      <span className="material-symbols-outlined text-emerald-500 text-sm" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
+                <div className="inline-flex items-center gap-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-black px-3 py-1 rounded-full mb-4 self-start">
+                  {lang === 'pt' ? 'Grátis para sempre' : lang === 'es' ? 'Gratis para siempre' : 'Free forever'}
+                </div>
+                <p className="text-sm font-black uppercase tracking-wider text-slate-400 mb-2">{t.free}</p>
+                <p className="text-5xl font-black mb-1">{lang === 'pt' ? 'R$0' : '$0'}</p>
+                <p className="text-slate-400 text-sm mb-6">{lang === 'pt' ? 'Sem cartão de crédito' : lang === 'es' ? 'Sin tarjeta de crédito' : 'No credit card needed'}</p>
+                <ul className="space-y-2.5 flex-1 mb-8">
+                  {(lang === 'pt' ? [
+                    'Até 15 tarefas simultâneas',
+                    'Planner semanal completo',
+                    '1 FlowCircle (até 3 membros)',
+                    'Pulso do Círculo + FlowStreak básico',
+                    '5 mensagens de IA por dia',
+                    'App web + mobile + desktop',
+                  ] : lang === 'es' ? [
+                    'Hasta 15 tareas simultáneas',
+                    'Planificador semanal completo',
+                    '1 FlowCircle (hasta 3 miembros)',
+                    'Pulso del Círculo + FlowStreak básico',
+                    '5 mensajes de IA por día',
+                    'App web + móvil + escritorio',
+                  ] : [
+                    'Up to 15 simultaneous tasks',
+                    'Full weekly planner',
+                    '1 FlowCircle (up to 3 members)',
+                    'Circle Pulse + basic FlowStreak',
+                    '5 AI messages per day',
+                    'Web + mobile + desktop app',
+                  ]).map(item => (
+                    <li key={item} className="flex items-start gap-3 text-sm">
+                      <span className="material-symbols-outlined text-emerald-500 text-sm mt-0.5 shrink-0" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
                       {item}
                     </li>
                   ))}
                 </ul>
-                <button onClick={isLoggedIn ? () => navigate('dashboard') : handleStart} className="w-full py-3 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary/5 transition-all">{isLoggedIn ? t.goToDashboard : t.getStarted}</button>
+                <button onClick={() => navigate('login')} className="w-full py-3 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary/5 transition-all">
+                  {lang === 'pt' ? 'Começar grátis' : lang === 'es' ? 'Empezar gratis' : 'Get started free'}
+                </button>
               </div>
             </FadeIn>
             {/* Pro */}
             <FadeIn delay={100}>
               <div className="bg-primary rounded-2xl p-8 relative overflow-hidden h-full flex flex-col shadow-2xl shadow-primary/30">
                 <div className="absolute top-4 right-4 bg-white/20 text-white text-xs font-black px-3 py-1 rounded-full">{t.mostPop}</div>
-                <p className="text-sm font-black uppercase tracking-wider text-white/70 mb-3">{t.pro}</p>
-                <p className="text-5xl font-black text-white mb-1">$8</p>
-                <p className="text-white/60 text-sm mb-8">{t.monthly}</p>
-                <ul className="space-y-3 flex-1 mb-8">
-                  {['Unlimited tasks','Smart Calendar AI','Unlimited FlowCircles','Cloud sync (Supabase)','Push notifications','Priority support'].map(item => (
-                    <li key={item} className="flex items-center gap-3 text-sm text-white">
-                      <span className="material-symbols-outlined text-white/80 text-sm" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
+                <div className="inline-flex items-center gap-1.5 bg-white/20 text-white text-xs font-black px-3 py-1 rounded-full mb-4 self-start">
+                  {lang === 'pt' ? 'Economize 33% no anual' : lang === 'es' ? 'Ahorra 33% anual' : 'Save 33% yearly'}
+                </div>
+                <p className="text-sm font-black uppercase tracking-wider text-white/70 mb-2">{t.pro}</p>
+                <p className="text-5xl font-black text-white mb-1">{lang === 'pt' ? 'R$19' : '$8'}<span className="text-lg font-medium text-white/70">{t.monthly}</span></p>
+                <p className="text-white/60 text-xs mb-6">{lang === 'pt' ? 'ou R$152/ano — economize R$76' : lang === 'es' ? 'o $64/año — ahorra $32' : 'or $64/year — save $32'}</p>
+                <ul className="space-y-2.5 flex-1 mb-8">
+                  {(lang === 'pt' ? [
+                    'Tudo do Free, mais:',
+                    'Tarefas ilimitadas',
+                    'IA ilimitada (Groq)',
+                    'Circles ilimitados + membros ilimitados',
+                    'Detector de Colisão',
+                    'Janela Livre automática',
+                    'FlowStreak completo + Escudos + Pacto',
+                    'Analytics completo (90 dias)',
+                    'Smart Calendar com sugestões de IA',
+                    'Sync na nuvem + Google Calendar',
+                    'Suporte prioritário',
+                  ] : lang === 'es' ? [
+                    'Todo de Free, más:',
+                    'Tareas ilimitadas',
+                    'IA ilimitada (Groq)',
+                    'Circles ilimitados + miembros',
+                    'Detector de Colisión',
+                    'Ventana Libre automática',
+                    'FlowStreak completo + Escudos',
+                    'Analytics completo (90 días)',
+                    'Smart Calendar con IA',
+                    'Sync en la nube + Google Calendar',
+                    'Soporte prioritario',
+                  ] : [
+                    'Everything in Free, plus:',
+                    'Unlimited tasks',
+                    'Unlimited AI (Groq)',
+                    'Unlimited Circles + members',
+                    'Collision Detector',
+                    'Automatic Free Window',
+                    'Full FlowStreak + Shields + Pact',
+                    'Full analytics (90 days)',
+                    'Smart Calendar AI suggestions',
+                    'Cloud sync + Google Calendar',
+                    'Priority support',
+                  ]).map((item, i) => (
+                    <li key={item} className={`flex items-start gap-3 text-sm text-white ${i === 0 ? 'font-black text-white/80 text-xs uppercase tracking-wider mt-1' : ''}`}>
+                      {i > 0 && <span className="material-symbols-outlined text-white/80 text-sm mt-0.5 shrink-0" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>}
                       {item}
                     </li>
                   ))}
                 </ul>
-                <button onClick={isLoggedIn ? () => navigate('dashboard') : handleStart} className="w-full py-3 rounded-xl bg-white text-primary font-bold hover:bg-white/90 transition-all">{isLoggedIn ? t.goToDashboard : t.getStarted}</button>
+                <button onClick={() => navigate('checkout')} className="w-full py-3 rounded-xl bg-white text-primary font-bold hover:bg-white/90 transition-all">
+                  {lang === 'pt' ? 'Começar Pro →' : lang === 'es' ? 'Empezar Pro →' : 'Start Pro →'}
+                </button>
               </div>
             </FadeIn>
           </div>

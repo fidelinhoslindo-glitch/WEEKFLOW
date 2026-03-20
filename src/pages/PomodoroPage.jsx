@@ -14,7 +14,7 @@ const load = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JS
 const save = (k, v)  => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} }
 
 export default function PomodoroPage() {
-  const { tasks, pushToast, sendPushNotification } = useApp()
+  const { tasks, pushToast, sendPushNotification, planLimits, isPro, navigate } = useApp()
 
   const [modeIdx,  setModeIdx]  = useState(0)
   const [seconds,  setSeconds]  = useState(MODES[0].mins * 60)
@@ -362,11 +362,20 @@ export default function PomodoroPage() {
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm font-black">Recent Sessions</p>
-                {history.length > 0 && (
+                {isPro && history.length > 0 && (
                   <button onClick={clearHistory} className="text-xs text-red-400 hover:text-red-600 font-semibold">Clear</button>
                 )}
               </div>
-              {history.length === 0 ? (
+              {!isPro ? (
+                <div className="text-center py-6 space-y-3">
+                  <span className="text-3xl block">🔒</span>
+                  <p className="text-xs font-bold text-slate-500">Histórico de sessões é Pro</p>
+                  <button onClick={() => navigate('checkout')}
+                    className="text-xs font-black text-primary hover:underline">
+                    Fazer upgrade →
+                  </button>
+                </div>
+              ) : history.length === 0 ? (
                 <div className="text-center py-6">
                   <span className="material-symbols-outlined text-3xl text-slate-300 block mb-2">timer</span>
                   <p className="text-xs text-slate-400">No sessions yet. Start focusing!</p>
