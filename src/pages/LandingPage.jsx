@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../context/AppContext'
-import AnimatedPlanner from '../components/AnimatedPlanner'
 
 // ── Translations ──────────────────────────────────────────────────────────────
 const T = {
@@ -318,8 +317,99 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* Animated planner mockup — scroll-driven */}
-          <AnimatedPlanner />
+          {/* App mockup with floating cards */}
+          <div className="relative max-w-5xl mx-auto" style={{animation:'fadeUp 0.8s ease 0.4s both'}}>
+            {/* Floating cards */}
+            <div className="absolute -left-6 top-16 z-10 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-3 border border-slate-200 dark:border-slate-700 hidden lg:block"
+              style={{animation:'float 4s ease-in-out infinite'}}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/40 rounded-xl flex items-center justify-center">
+                  <span className="material-symbols-outlined text-emerald-500 text-sm" style={{fontVariationSettings:"'FILL' 1"}}>check_circle</span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">{lang==='pt'?'Tarefa concluída!':lang==='es'?'¡Tarea completada!':'Task completed!'}</p>
+                  <p className="text-[10px] text-slate-400">Morning Workout</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="absolute -right-6 top-20 z-10 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-3 border border-slate-200 dark:border-slate-700 hidden lg:block"
+              style={{animation:'float 4s ease-in-out infinite', animationDelay:'1s'}}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-primary/10 rounded-xl flex items-center justify-center">
+                  <span className="material-symbols-outlined text-primary text-sm">group</span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">FlowCircle</p>
+                  <p className="text-[10px] text-slate-400">3 {lang==='pt'?'membros online':lang==='es'?'miembros en línea':'members online'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="absolute -left-4 bottom-16 z-10 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-3 border border-slate-200 dark:border-slate-700 hidden lg:block"
+              style={{animation:'float 4s ease-in-out infinite', animationDelay:'2s'}}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/40 rounded-xl flex items-center justify-center">
+                  <span className="material-symbols-outlined text-amber-500 text-sm">bolt</span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">{lang==='pt'?'74% completo':lang==='es'?'74% completado':'74% complete'}</p>
+                  <p className="text-[10px] text-slate-400">{lang==='pt'?'Esta semana':lang==='es'?'Esta semana':'This week'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Browser mockup */}
+            <div className="absolute -inset-2 bg-gradient-to-r from-primary/20 to-purple-500/20 blur-3xl opacity-60 rounded-3xl"/>
+            <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+              <div className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center gap-3">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-400"/><div className="w-3 h-3 rounded-full bg-amber-400"/><div className="w-3 h-3 rounded-full bg-emerald-400"/>
+                </div>
+                <div className="flex-1 bg-slate-200 dark:bg-slate-700 h-6 rounded-lg flex items-center px-3 gap-2">
+                  <span className="material-symbols-outlined text-slate-400" style={{fontSize:12}}>lock</span>
+                  <span className="text-xs text-slate-400 font-mono">weekflow.app</span>
+                </div>
+              </div>
+              {/* Desktop: full 7-col mockup */}
+              <div className="hidden sm:grid p-5 grid-cols-7 gap-2" style={{height:280}}>
+                {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((day, i) => (
+                  <div key={day} className="flex flex-col gap-1.5">
+                    <p className="text-[10px] font-bold text-slate-400 text-center">{day}</p>
+                    {i<5 ? (
+                      <>
+                        <div className="h-14 rounded-xl bg-primary/10 border border-primary/20 p-1.5 flex flex-col gap-1">
+                          <div className="h-1.5 w-3/4 bg-primary/50 rounded-full"/>
+                          <div className="h-1.5 w-1/2 bg-primary/25 rounded-full"/>
+                        </div>
+                        <div className="h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200/50 dark:border-emerald-700/30"/>
+                        {i%2===0 && <div className="h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 border border-blue-200/50 dark:border-blue-700/30"/>}
+                      </>
+                    ) : (
+                      <>
+                        <div className="h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 border border-purple-200/50"/>
+                        <div className="h-8 rounded-xl bg-rose-100 dark:bg-rose-900/30 border border-rose-200/50"/>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {/* Mobile: simplified 5-col mockup */}
+              <div className="sm:hidden grid p-3 grid-cols-5 gap-1.5" style={{height:180}}>
+                {['Mon','Tue','Wed','Thu','Fri'].map((day, i) => (
+                  <div key={day} className="flex flex-col gap-1">
+                    <p className="text-[9px] font-bold text-slate-400 text-center">{day}</p>
+                    <div className="h-10 rounded-lg bg-primary/10 border border-primary/20 p-1 flex flex-col gap-0.5">
+                      <div className="h-1 w-3/4 bg-primary/50 rounded-full"/>
+                      <div className="h-1 w-1/2 bg-primary/25 rounded-full"/>
+                    </div>
+                    <div className="h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200/50 dark:border-emerald-700/30"/>
+                    {i%2===0 && <div className="h-6 rounded-lg bg-blue-100 dark:bg-blue-900/30 border border-blue-200/50 dark:border-blue-700/30"/>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
