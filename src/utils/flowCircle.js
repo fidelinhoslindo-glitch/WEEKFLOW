@@ -10,17 +10,7 @@ export const CIRCLE_MODES = {
   company: { label:'Empresa 🏢',        icon:'🏢', color:'from-violet-500 to-indigo-500', bg:'bg-violet-50 dark:bg-violet-900/20',   border:'border-violet-200 dark:border-violet-800',   text:'text-violet-600 dark:text-violet-300',   maxMembers:100, description:'Escala, projetos e calendário de equipe' },
 }
 
-const DEMO = [
-  { id:'circle_1', mode:'couple',  name:'Eu & Ana',       color:'#ec4899',
-    members:[{id:'me',name:'Gustavo',role:'admin',avatar:'#6467f2',status:'online'},{id:'ana',name:'Ana',role:'member',avatar:'#ec4899',status:'online'}],
-    events:[{id:'e1',title:'Jantar romântico',date:'2026-03-20',time:'20:00',duration:120,shared:true,color:'#ec4899'}],
-    anniversary:'2023-06-15', createdAt:new Date().toISOString() },
-  { id:'circle_2', mode:'friends', name:'Galera do Rolê',  color:'#3b82f6',
-    members:[{id:'me',name:'Gustavo',role:'admin',avatar:'#6467f2',status:'online'},{id:'leo',name:'Leo',role:'member',avatar:'#10b981',status:'away'},{id:'carol',name:'Carol',role:'member',avatar:'#f59e0b',status:'offline'},{id:'pedro',name:'Pedro',role:'member',avatar:'#8b5cf6',status:'online'}],
-    events:[{id:'e3',title:'Churrasco Sábado',date:'2026-03-21',time:'13:00',duration:300,shared:true,color:'#3b82f6'}],
-    pendingPoll:{question:'Qual dia para o próximo rolê?',options:['Sábado','Domingo','Sexta'],votes:{Sábado:2,Domingo:1,Sexta:1}},
-    createdAt:new Date().toISOString() },
-]
+const DEMO = []
 
 export function loadCircles()        { try { const v=localStorage.getItem(LS_CIRCLES); return v?JSON.parse(v):DEMO } catch { return DEMO } }
 export function saveCircles(c)       { try { localStorage.setItem(LS_CIRCLES,JSON.stringify(c)) } catch {} }

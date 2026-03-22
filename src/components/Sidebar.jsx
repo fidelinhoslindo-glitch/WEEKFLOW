@@ -59,10 +59,10 @@ function Sidebar() {
 
         <div className="flex items-center gap-3 px-2">
           <div className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-sm">
-            {user.name.charAt(0)}
+            {(user.name || user.email || 'U').charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-semibold truncate">{user.name}</p>
+            <p className="text-sm font-semibold truncate">{user.name || user.email?.split('@')[0] || 'Usuário'}</p>
             <p className="text-xs text-slate-500">{user.plan} Plan</p>
           </div>
           <button onClick={() => navigate('settings')} aria-label="Go to settings" className="text-slate-400 hover:text-primary transition-colors">

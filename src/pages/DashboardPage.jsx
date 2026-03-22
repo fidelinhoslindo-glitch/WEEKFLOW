@@ -50,7 +50,7 @@ export default function DashboardPage() {
     <div className="flex min-h-screen bg-bg-light dark:bg-bg-dark">
       <Sidebar />
       <div className="flex-1 flex flex-col">
-        <Header title={`Good morning, ${user.name.split(' ')[0]}.`} subtitle="Ready for your flow?" />
+        <Header title={`Good morning, ${(user.name || user.email?.split('@')[0] || 'Usuário').split(' ')[0]}.`} subtitle="Ready for your flow?" />
 
         <main className="p-4 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
           {/* Action Buttons */}
@@ -69,6 +69,27 @@ export default function DashboardPage() {
               <span className="material-symbols-outlined text-base">add</span> Add Task
             </button>
           </div>
+
+          {/* Empty state when no tasks */}
+          {tasks.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <div className="w-24 h-24 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-6">
+                <span className="material-symbols-outlined text-primary" style={{ fontSize: 48 }}>calendar_month</span>
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Sua semana está em branco</h3>
+              <p className="text-sm text-slate-500 text-center max-w-xs mb-6">Adicione sua primeira tarefa ou deixe a IA montar sua semana para você</p>
+              <div className="flex gap-3">
+                <button onClick={() => setShowAddTask(true)}
+                  className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-primary/25 hover:opacity-90 transition-opacity">
+                  <span className="material-symbols-outlined text-base">add</span> Adicionar tarefa
+                </button>
+                <button onClick={() => setShowAIChat(true)}
+                  className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                  <span className="material-symbols-outlined text-base text-purple-500" style={{fontVariationSettings:"'FILL' 1"}}>smart_toy</span> Pedir para a IA
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Stats — animated */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">

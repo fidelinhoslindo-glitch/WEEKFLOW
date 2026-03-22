@@ -11,19 +11,7 @@ const save = (key, val)      => { try { localStorage.setItem(key, JSON.stringify
 const LS = { TASKS:'wf_tasks', USER:'wf_user', DARK:'wf_dark', AUTH:'wf_auth', TOKEN:'wf_token', ONBOARD:'wf_onboard', WEEK:'wf_week_offset' }
 
 // ── Seed tasks ─────────────────────────────────────────────────────────────---
-const SEED = [
-  { id:1,  title:'Draft Q4 Roadmap',     category:'Work',  day:'Monday',    time:'09:00', duration:90,  completed:true,  priority:'high',   notes:'', recurring:true,  color:'' },
-  { id:2,  title:'Morning Workout',       category:'Gym',   day:'Monday',    time:'07:00', duration:60,  completed:true,  priority:'medium', notes:'', recurring:true,  color:'' },
-  { id:3,  title:'Team Standup',          category:'Work',  day:'Tuesday',   time:'10:00', duration:30,  completed:false, priority:'medium', notes:'', recurring:true,  color:'' },
-  { id:4,  title:'Study React Patterns',  category:'Study', day:'Tuesday',   time:'19:00', duration:90,  completed:false, priority:'high',   notes:'', recurring:false, color:'' },
-  { id:5,  title:'Yoga Session',          category:'Gym',   day:'Wednesday', time:'07:30', duration:45,  completed:false, priority:'low',    notes:'', recurring:true,  color:'' },
-  { id:6,  title:'Client Call',           category:'Work',  day:'Wednesday', time:'14:00', duration:60,  completed:false, priority:'high',   notes:'', recurring:false, color:'' },
-  { id:7,  title:'Read Design Book',      category:'Study', day:'Thursday',  time:'20:00', duration:60,  completed:false, priority:'low',    notes:'', recurring:false, color:'' },
-  { id:8,  title:'Gym – Chest Day',       category:'Gym',   day:'Thursday',  time:'18:00', duration:75,  completed:false, priority:'medium', notes:'', recurring:true,  color:'' },
-  { id:9,  title:'Weekly Review',         category:'Work',  day:'Friday',    time:'16:00', duration:60,  completed:false, priority:'medium', notes:'', recurring:true,  color:'' },
-  { id:10, title:'Rest & Recovery',       category:'Rest',  day:'Saturday',  time:'10:00', duration:120, completed:false, priority:'low',    notes:'', recurring:false, color:'' },
-  { id:11, title:'Meal Prep',             category:'Rest',  day:'Sunday',    time:'15:00', duration:90,  completed:false, priority:'medium', notes:'', recurring:false, color:'' },
-]
+const SEED = []
 
 export const categoryColors = {
   Work:  { bg:'bg-primary/10',  text:'text-primary',     border:'border-primary/30',  dot:'bg-primary'     },
@@ -120,7 +108,7 @@ export function AppProvider({ children }) {
   // ── Auth ──────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn] = useState(() => load(LS.AUTH, false))
   const [sbToken,    setSbToken]    = useState(() => load(LS.TOKEN, null))
-  const [user, setUserState]        = useState(() => load(LS.USER, { name:'Alex Rivers', email:'alex@weekflow.app', plan:'Pro', avatar:null, avatarColor:'#6467f2' }))
+  const [user, setUserState]        = useState(() => load(LS.USER, { name:'', email:'', plan:'Free', avatar:null, avatarColor:'#6467f2' }))
   const [syncing, setSyncing]       = useState(false)
 
   const setUser = useCallback((updater) => {
@@ -162,22 +150,25 @@ export function AppProvider({ children }) {
   }
 
   const register = async (name, email, password) => {
+    // Clean previous data so new account starts fresh
+    localStorage.removeItem(LS.TASKS)
+    localStorage.removeItem(LS.ONBOARD)
+    localStorage.removeItem(LS.WEEK)
+    setTasksState([])
+    setOnboardingDataState({})
+
     if (SUPABASE_ENABLED && password) {
       try {
         const res = await supabaseSignUp(email, password, name)
-        // If Supabase returns a session immediately (email confirmation disabled),
-        // use it. Otherwise, fall through to local login.
         if (res?.session?.access_token) {
           const token = res.session.access_token
           save(LS.TOKEN, token); setSbToken(token)
           const u = { name, email, plan:'Free', avatar:null, avatarColor:'#6467f2', id: res.user?.id }
           save(LS.USER, u); setUserState(u)
           save(LS.AUTH, true); setIsLoggedIn(true)
-          syncFromCloud(token)
           return { ok: true }
         }
-        // Email confirmation required: log in locally so they can use the app
-        const u = { name, email, plan:'Pro', avatar:null, avatarColor:'#6467f2' }
+        const u = { name, email, plan:'Free', avatar:null, avatarColor:'#6467f2' }
         save(LS.USER, u); setUserState(u)
         save(LS.AUTH, true); setIsLoggedIn(true)
         return { ok: true, needsConfirmation: true }
@@ -236,7 +227,7 @@ export function AppProvider({ children }) {
     }
   }
 
-  const deleteAccount = () => { localStorage.clear(); setIsLoggedIn(false); setTasksState(SEED); setUserState({ name:'Alex Rivers', email:'', plan:'Pro', avatar:null, avatarColor:'#6467f2' }); setPage('landing') }
+  const deleteAccount = () => { localStorage.clear(); setIsLoggedIn(false); setTasksState([]); setUserState({ name:'', email:'', plan:'Free', avatar:null, avatarColor:'#6467f2' }); setPage('landing') }
 
   // ── Cloud sync ────────────────────────────────────────────────────────────
   const syncFromCloud = useCallback(async (token) => {
@@ -429,11 +420,7 @@ export function AppProvider({ children }) {
 
 
   // ── Notifications ─────────────────────────────────────────────────────────
-  const [notifications, setNotifications] = useState([
-    { id:1, text:'Morning Workout starting in 30 min', time:'2m ago',  read:false },
-    { id:2, text:'Team Standup in 1 hour',             time:'15m ago', read:false },
-    { id:3, text:'Weekly review completed!',           time:'1h ago',  read:true  },
-  ])
+  const [notifications, setNotifications] = useState([])
   const [toasts, setToasts] = useState([])
 
   const pushToast = useCallback((msg, type='info') => {
