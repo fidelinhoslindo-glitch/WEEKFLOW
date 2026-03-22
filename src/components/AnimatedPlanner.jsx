@@ -90,7 +90,7 @@ export default function AnimatedPlanner() {
   const { containerRef, step } = useScrollReveal(7)
 
   return (
-    <div ref={containerRef} className="relative max-w-5xl mx-auto" style={{ animation: 'fadeUp 0.8s ease 0.4s both' }}>
+    <div ref={containerRef} className="relative max-w-6xl mx-auto" style={{ animation: 'fadeUp 0.8s ease 0.4s both' }}>
       {/* Glow behind */}
       <div className="absolute -inset-2 bg-gradient-to-r from-primary/20 to-purple-500/20 blur-3xl opacity-60 rounded-3xl" />
 
@@ -110,11 +110,11 @@ export default function AnimatedPlanner() {
         </div>
 
         {/* ── Desktop planner (7 cols) ── */}
-        <div className="hidden sm:block p-5">
-          <div className="grid grid-cols-7 gap-2" style={{ minHeight: 260 }}>
+        <div className="hidden sm:block p-6">
+          <div className="grid grid-cols-7 gap-3" style={{ minHeight: 340 }}>
             {DAYS.map((day, di) => (
-              <div key={day} className="flex flex-col gap-1.5">
-                <p className="text-[10px] font-bold text-slate-500 text-center tracking-wider">{day}</p>
+              <div key={day} className="flex flex-col gap-2">
+                <p className="text-xs font-bold text-slate-500 text-center tracking-wider">{day}</p>
 
                 {/* Task slots for Mon/Tue/Wed */}
                 {TASKS.filter(t => t.day === di).map((task, ti) => (
@@ -126,9 +126,9 @@ export default function AnimatedPlanner() {
                 {/* Completed badge on Monday (step 3) */}
                 {di === 0 && (
                   <Reveal visible={step >= 3} from="scale" delay={100}>
-                    <div className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/30 rounded-xl px-2 py-1.5">
-                      <span className="text-emerald-400 text-xs font-bold">✓</span>
-                      <span className="text-[10px] text-emerald-300 font-semibold truncate">Concluída!</span>
+                    <div className="flex items-center gap-2 bg-emerald-500/15 border border-emerald-500/30 rounded-xl px-3 py-2">
+                      <span className="text-emerald-400 text-sm font-bold">✓</span>
+                      <span className="text-xs text-emerald-300 font-semibold truncate">Concluída!</span>
                     </div>
                   </Reveal>
                 )}
@@ -136,14 +136,14 @@ export default function AnimatedPlanner() {
                 {/* Empty placeholder slots for other days */}
                 {TASKS.filter(t => t.day === di).length === 0 && di < 5 && (
                   <>
-                    <div className="h-14 rounded-xl bg-slate-800/40 border border-slate-700/30" />
-                    {di % 2 === 0 && <div className="h-10 rounded-xl bg-slate-800/30 border border-slate-700/20" />}
+                    <div className="h-[72px] rounded-xl bg-slate-800/40 border border-slate-700/30" />
+                    {di % 2 === 0 && <div className="h-12 rounded-xl bg-slate-800/30 border border-slate-700/20" />}
                   </>
                 )}
                 {di >= 5 && (
                   <>
-                    <div className="h-10 rounded-xl bg-slate-800/30 border border-slate-700/20" />
-                    <div className="h-8 rounded-xl bg-slate-800/20 border border-slate-700/15" />
+                    <div className="h-12 rounded-xl bg-slate-800/30 border border-slate-700/20" />
+                    <div className="h-10 rounded-xl bg-slate-800/20 border border-slate-700/15" />
                   </>
                 )}
               </div>
@@ -203,17 +203,17 @@ export default function AnimatedPlanner() {
 
 function TaskCard({ task }) {
   return (
-    <div className="rounded-xl p-2 flex flex-col gap-1"
+    <div className="rounded-xl p-3 flex flex-col gap-1.5"
       style={{ background: 'rgba(100,103,242,0.15)', border: '1px solid rgba(100,103,242,0.3)' }}>
-      <div className="flex items-center gap-1">
-        <span className="text-xs">{task.emoji}</span>
-        <span className="text-[10px] font-bold text-white truncate">{task.title}</span>
-      </div>
       <div className="flex items-center gap-1.5">
-        <span className="text-[9px] text-slate-400">{task.time}</span>
+        <span className="text-sm">{task.emoji}</span>
+        <span className="text-xs font-bold text-white truncate">{task.title}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] text-slate-400">{task.time}</span>
         <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: task.color }} />
-          <span className="text-[9px] text-slate-400">{task.cat}</span>
+          <span className="w-2 h-2 rounded-full" style={{ background: task.color }} />
+          <span className="text-[10px] text-slate-400">{task.cat}</span>
         </span>
       </div>
     </div>
