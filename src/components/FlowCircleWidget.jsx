@@ -62,6 +62,7 @@ export default function FlowCircleWidget() {
   })
 
   const dragging = useRef(false)
+  const dragMoved = useRef(false)
   const dragOffset = useRef({ x: 0, y: 0 })
   const widgetRef = useRef(null)
 
@@ -105,16 +106,17 @@ export default function FlowCircleWidget() {
   }, [])
 
   const onPointerDown = useCallback((e) => {
-    if (isMobile) return
     dragging.current = true
+    dragMoved.current = false
     const touch = e.touches?.[0] || e
     dragOffset.current = { x: touch.clientX - pos.x, y: touch.clientY - pos.y }
     e.preventDefault()
-  }, [pos, isMobile])
+  }, [pos])
 
   useEffect(() => {
     const onMove = (e) => {
       if (!dragging.current) return
+      dragMoved.current = true
       const touch = e.touches?.[0] || e
       const newPos = clamp(
         touch.clientX - dragOffset.current.x,
@@ -151,19 +153,22 @@ export default function FlowCircleWidget() {
   if (minimized) {
     return (
       <div
+        ref={widgetRef}
         className="fixed z-50"
         style={{
-          right: isMobile ? 16 : undefined,
-          bottom: isMobile ? 80 : undefined,
-          left: isMobile ? undefined : pos.x,
-          top: isMobile ? undefined : pos.y,
+          left: pos.x,
+          top: pos.y,
           transform: mounted ? 'scale(1)' : 'scale(0)',
           opacity: mounted ? 1 : 0,
-          transition: 'transform 0.2s ease-out, opacity 0.2s ease-out',
+          transition: dragging.current ? 'none' : 'transform 0.2s ease-out, opacity 0.2s ease-out',
+          cursor: 'grab',
+          touchAction: 'none',
         }}
+        onMouseDown={onPointerDown}
+        onTouchStart={onPointerDown}
       >
         <button
-          onClick={() => setMinimized(false)}
+          onClick={(e) => { if (!dragMoved.current) setMinimized(false) }}
           className="relative w-12 h-12 rounded-full flex items-center justify-center shadow-lg"
           style={{
             background: '#6467f2',
@@ -194,14 +199,12 @@ export default function FlowCircleWidget() {
       ref={widgetRef}
       className="fixed z-50"
       style={{
-        right: isMobile ? 8 : undefined,
-        bottom: isMobile ? 72 : undefined,
-        left: isMobile ? undefined : pos.x,
-        top: isMobile ? undefined : pos.y,
+        left: pos.x,
+        top: pos.y,
         width: isMobile ? 220 : 240,
         transform: mounted ? 'scale(1)' : 'scale(0.8)',
         opacity: mounted ? 1 : 0,
-        transition: 'transform 0.2s ease-out, opacity 0.2s ease-out',
+        transition: dragging.current ? 'none' : 'transform 0.2s ease-out, opacity 0.2s ease-out',
       }}
     >
       <div
@@ -216,7 +219,7 @@ export default function FlowCircleWidget() {
         {/* Header — drag handle */}
         <div
           className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-700/40"
-          style={{ cursor: isMobile ? 'default' : 'grab' }}
+          style={{ cursor: 'grab', touchAction: 'none' }}
           onMouseDown={onPointerDown}
           onTouchStart={onPointerDown}
         >
