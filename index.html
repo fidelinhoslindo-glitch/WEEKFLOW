@@ -23,7 +23,18 @@
   <script type="module" src="/src/main.jsx"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'))
+      window.addEventListener('load', async () => {
+        var SW_VERSION = 'v3'
+        // One-time cache purge for users stuck on old cache-first SW
+        if (localStorage.getItem('wf_sw') !== SW_VERSION) {
+          var regs = await navigator.serviceWorker.getRegistrations()
+          for (var r of regs) await r.unregister()
+          var keys = await caches.keys()
+          for (var k of keys) await caches.delete(k)
+          localStorage.setItem('wf_sw', SW_VERSION)
+        }
+        navigator.serviceWorker.register('/sw.js')
+      })
     }
   </script>
 </body>
