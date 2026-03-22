@@ -251,7 +251,7 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden pt-6 pb-16 sm:pt-10 sm:pb-28 lg:pt-20 lg:pb-44">
+      <section className="relative overflow-hidden pt-10 pb-16 sm:pt-16 sm:pb-28 lg:pt-28 lg:pb-44">
         {/* Animated background orbs */}
         <div className="absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute w-[600px] h-[600px] rounded-full bg-primary/6 blur-[120px] -top-40 -left-40 animate-pulse" style={{animationDuration:'8s'}}/>
