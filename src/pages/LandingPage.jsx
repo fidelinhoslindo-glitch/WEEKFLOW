@@ -10,7 +10,6 @@ const T = {
     heroTitle2: 'find your flow.',
     heroSub: 'Master your recurring responsibilities like work, gym, and study with our intuitive weekly planner designed for modern life.',
     cta1: 'Build my week',
-    cta2: 'See demo',
     featuresTitle: 'Designed for your rhythm',
     featuresub: 'Everything you need to stay consistent and balanced.',
     pricingTitle: 'Simple pricing',
@@ -54,7 +53,6 @@ const T = {
     heroTitle2: 'encontre seu fluxo.',
     heroSub: 'Domine suas responsabilidades recorrentes como trabalho, academia e estudo com nosso planejador semanal intuitivo.',
     cta1: 'Montar minha semana',
-    cta2: 'Ver demonstração',
     featuresTitle: 'Criado para o seu ritmo',
     featuresub: 'Tudo que você precisa para manter consistência e equilíbrio.',
     pricingTitle: 'Preços simples',
@@ -98,7 +96,6 @@ const T = {
     heroTitle2: 'encuentra tu flujo.',
     heroSub: 'Domina tus responsabilidades recurrentes como trabajo, gimnasio y estudio con nuestro planificador semanal intuitivo.',
     cta1: 'Armar mi semana',
-    cta2: 'Ver demo',
     featuresTitle: 'Diseñado para tu ritmo',
     featuresub: 'Todo lo que necesitas para mantenerte consistente y equilibrado.',
     pricingTitle: 'Precios simples',
@@ -297,10 +294,6 @@ export default function LandingPage() {
               className="w-full sm:w-auto group bg-primary text-white text-base font-bold px-8 py-4 rounded-xl shadow-xl shadow-primary/30 hover:shadow-primary/50 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2">
               <span className="material-symbols-outlined text-sm group-hover:rotate-12 transition-transform">{isLoggedIn ? 'dashboard' : 'bolt'}</span>
               {isLoggedIn ? t.goToDashboard : t.cta1}
-            </button>
-            <button onClick={() => navigate('dashboard')}
-              className="w-full sm:w-auto bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-base font-bold px-8 py-4 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all inline-flex items-center justify-center gap-2">
-              <span className="material-symbols-outlined text-primary">play_circle</span>{t.cta2}
             </button>
           </div>
 
