@@ -1,5 +1,5 @@
 // WeekFlow Service Worker — Push Notifications + Offline Cache
-const CACHE = 'weekflow-v2'
+const CACHE = 'weekflow-v3'
 const STATIC = ['/','./index.html']
 
 // ── Install: cache static assets ─────────────────────────────────────────────
@@ -19,23 +19,34 @@ self.addEventListener('activate', e => {
   )
 })
 
-// ── Fetch: serve from cache when offline ─────────────────────────────────────
+// ── Fetch: network-first, fallback to cache when offline ─────────────────────
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return
-  // Skip non-same-origin
   if (!e.request.url.startsWith(self.location.origin)) return
 
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached
-      return fetch(e.request).then(res => {
-        if (res.ok && res.type === 'basic') {
+  // For navigation requests (HTML pages), always go network-first
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res.ok) {
           const clone = res.clone()
           caches.open(CACHE).then(c => c.put(e.request, clone))
         }
         return res
-      }).catch(() => cached || new Response('Offline'))
-    })
+      }).catch(() => caches.match(e.request).then(c => c || caches.match('/')))
+    )
+    return
+  }
+
+  // For assets (JS, CSS, images): network-first with cache fallback
+  e.respondWith(
+    fetch(e.request).then(res => {
+      if (res.ok && res.type === 'basic') {
+        const clone = res.clone()
+        caches.open(CACHE).then(c => c.put(e.request, clone))
+      }
+      return res
+    }).catch(() => caches.match(e.request))
   )
 })
 
@@ -68,17 +79,14 @@ self.addEventListener('notificationclick', e => {
 
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-      // Focus existing WeekFlow tab
       const existing = clientList.find(c => c.url.includes(self.location.origin))
       if (existing) return existing.focus()
-      // Open new tab
       return clients.openWindow(e.notification.data?.url || '/')
     })
   )
 })
 
 // ── Background Sync: alarm check ─────────────────────────────────────────────
-// This runs even when the app is closed
 self.addEventListener('sync', e => {
   if (e.tag === 'weekflow-alarm-check') {
     e.waitUntil(checkAlarms())
@@ -110,13 +118,11 @@ async function checkAlarms() {
 
 // ── Message from app ─────────────────────────────────────────────────────────
 self.addEventListener('message', e => {
-  // App sends current tasks to SW for background alarm checks
   if (e.data?.type === 'STORE_ALARMS') {
     caches.open('weekflow-alarms').then(c =>
       c.put('alarms', new Response(JSON.stringify(e.data.alarms)))
     )
   }
-  // App asks SW to show a notification immediately
   if (e.data?.type === 'SHOW_NOTIFICATION') {
     self.registration.showNotification(e.data.title, {
       body:    e.data.body,
