@@ -438,8 +438,12 @@ export function AppProvider({ children }) {
     return perm === 'granted'
   }, [])
 
-  // Send notification — Tauri → Service Worker → Web Notification
+  // Send notification — Electron → Tauri → Service Worker → Web Notification
   const sendPushNotification = useCallback((title, body, icon = '/icon-192.png') => {
+    // Electron desktop
+    if (typeof window !== 'undefined' && window.electron?.notify) {
+      try { window.electron.notify(title, body); return } catch {}
+    }
     // Tauri desktop
     if (typeof window !== 'undefined' && window.__TAURI__) {
       try { window.__TAURI__.notification?.sendNotification({ title, body }); return } catch {}
