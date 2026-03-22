@@ -31,6 +31,7 @@ import Confetti       from './components/Confetti'
 import SplashScreen   from './components/SplashScreen'
 import AIChat         from './components/AIChat'
 import TourGuide, { useTour } from './components/TourGuide'
+import FlowCircleWidget from './components/FlowCircleWidget'
 import SetupWizard    from './components/SetupWizard'
 
 // ── Page map ─────────────────────────────────────────────────────────────────
@@ -155,6 +156,7 @@ function AppInner() {
       {confetti       && <Confetti onDone={() => setConfetti(false)} />}
       {showAIChat     && <AIChat onClose={() => setShowAIChat(false)} />}
       {showTour && isLoggedIn && <TourGuide onFinish={finishTour} />}
+      {isLoggedIn && showBottomNav && <FlowCircleWidget />}
       <ToastContainer />
       <KeyboardHint />
     </div>
