@@ -25,24 +25,18 @@ function useScrollReveal(totalSteps) {
     const el = containerRef.current
     if (!el) return
 
-    const obs = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) return
-      // Once visible, switch to scroll-based progression
-      const onScroll = () => {
-        const rect = el.getBoundingClientRect()
-        const viewH = window.innerHeight
-        // progress 0→1 as element scrolls from bottom-of-viewport to top
-        const progress = Math.min(1, Math.max(0, (viewH - rect.top) / (viewH + rect.height)))
-        const newStep = Math.floor(progress * (totalSteps + 1)) - 1
-        setStep(prev => Math.max(prev, newStep)) // only go forward
-      }
-      window.addEventListener('scroll', onScroll, { passive: true })
-      onScroll()
-      return () => window.removeEventListener('scroll', onScroll)
-    }, { threshold: 0 })
+    const onScroll = () => {
+      const rect = el.getBoundingClientRect()
+      const viewH = window.innerHeight
+      // progress 0→1 as element scrolls from bottom-of-viewport to top
+      const progress = Math.min(1, Math.max(0, (viewH - rect.top) / (viewH + rect.height)))
+      const newStep = Math.floor(progress * (totalSteps + 1)) - 1
+      setStep(newStep) // follows scroll both directions
+    }
 
-    obs.observe(el)
-    return () => obs.disconnect()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
   }, [totalSteps])
 
   return { containerRef, step }
@@ -111,7 +105,7 @@ export default function AnimatedPlanner() {
           </div>
           <div className="flex-1 bg-slate-800/80 h-6 rounded-lg flex items-center px-3 gap-2">
             <span className="material-symbols-outlined text-slate-500" style={{ fontSize: 12 }}>lock</span>
-            <span className="text-xs text-slate-500 font-mono">weekflow.app</span>
+            <span className="text-xs text-slate-500 font-mono">weekflow.space</span>
           </div>
         </div>
 
