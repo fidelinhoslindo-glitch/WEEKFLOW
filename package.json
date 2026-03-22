@@ -10,10 +10,25 @@
     "build": "vite build",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "vite build && electron-builder --win"
+    "electron:build": "vite build && electron-builder --win",
+    "electron:publish": "vite build && electron-builder --win --publish always"
+  },
+  "build": {
+    "appId": "app.weekflow.desktop",
+    "productName": "WeekFlow",
+    "publish": {
+      "provider": "github",
+      "owner": "fidelinhoslindo-glitch",
+      "repo": "WEEKFLOW"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    }
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.0",
+    "electron-updater": "^6.8.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0"

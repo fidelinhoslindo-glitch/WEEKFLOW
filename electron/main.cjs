@@ -1,10 +1,23 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, shell, ipcMain } = require('electron')
 const path = require('path')
+const { autoUpdater } = require('electron-updater')
 
 const isDev = !app.isPackaged
 
 let mainWindow
 let tray
+
+// ── Auto-updater setup ────────────────────────────────────────────────────────
+autoUpdater.autoDownload = true
+autoUpdater.autoInstallOnAppQuit = true
+
+autoUpdater.on('update-available', () => {
+  mainWindow?.webContents.send('update-available')
+})
+
+autoUpdater.on('update-downloaded', () => {
+  mainWindow?.webContents.send('update-downloaded')
+})
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -75,6 +88,13 @@ ipcMain.on('open-external', (event, url) => {
 app.whenReady().then(() => {
   createWindow()
   createTray()
+  if (!isDev) {
+    autoUpdater.checkForUpdates()
+  }
+})
+
+ipcMain.on('install-update', () => {
+  autoUpdater.quitAndInstall()
 })
 
 app.on('window-all-closed', () => {

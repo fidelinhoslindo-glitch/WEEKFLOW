@@ -1,4 +1,4 @@
-import { useState, Component } from 'react'
+import { useState, useEffect, Component } from 'react'
 import { useApp } from './context/AppContext'
 
 // ── Pages ────────────────────────────────────────────────────────────────────
@@ -114,8 +114,16 @@ function AppInner() {
 
   const { show: showTour, finish: finishTour } = useTour()
 
-  // Electron first-run setup wizard
+  // Electron auto-update banner
   const isElectron = typeof window !== 'undefined' && !!window.electron
+  const [updateReady, setUpdateReady] = useState(false)
+
+  useEffect(() => {
+    if (!isElectron) return
+    window.electron.onUpdateDownloaded?.(() => setUpdateReady(true))
+  }, [isElectron])
+
+  // Electron first-run setup wizard
   const [setupDone, setSetupDone] = useState(
     () => !isElectron || localStorage.getItem('wf_setup_done') === '1'
   )
@@ -143,6 +151,17 @@ function AppInner() {
 
   return (
     <div className="min-h-screen bg-bg-light dark:bg-bg-dark text-slate-900 dark:text-slate-100 transition-colors duration-300">
+      {updateReady && (
+        <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between gap-4 px-4 py-2.5 bg-primary text-white text-sm font-medium shadow-lg">
+          <span>⬆️ Nova versão do WeekFlow pronta para instalar.</span>
+          <button
+            onClick={() => window.electron.installUpdate()}
+            className="shrink-0 bg-white text-primary font-bold px-3 py-1 rounded-lg hover:bg-slate-100 transition-colors"
+          >
+            Reiniciar agora
+          </button>
+        </div>
+      )}
       <ErrorBoundary>
         <div className={showBottomNav ? 'pb-20 lg:pb-0' : ''}>
           <PageComponent />
