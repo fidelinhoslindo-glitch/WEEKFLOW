@@ -764,31 +764,42 @@ export function SettingsPage() {
       <div className="flex-1 flex flex-col min-w-0">
         <Header title={t.settings.title || 'Settings'} />
 
-        <main className="flex-1 p-4 lg:p-8 space-y-6 max-w-3xl mx-auto w-full">
+        <main className="flex-1 p-4 lg:p-8 space-y-6 max-w-5xl mx-auto w-full">
 
-          {/* ── Tab nav ── */}
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-            {TABS.map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold shrink-0 transition-all border ${
-                  activeTab === tab.id
-                    ? tab.id === 'danger' ? 'bg-red-500 text-white border-red-500 shadow-lg' : 'bg-white dark:bg-slate-900 border-primary/20 text-slate-900 dark:text-white shadow-md'
-                    : tab.id === 'danger' ? 'border-transparent text-red-400 hover:bg-white dark:hover:bg-slate-900 hover:text-red-500' : 'border-transparent text-slate-500 hover:bg-white dark:hover:bg-slate-900 hover:text-slate-700'
-                }`}>
-                <span className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 material-symbols-outlined text-sm ${
-                  activeTab === tab.id
-                    ? tab.id === 'danger' ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
-                    : tab.id === 'danger' ? 'bg-red-50 dark:bg-red-900/20 text-red-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                }`}>{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-            <button onClick={logout}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold border border-transparent text-slate-500 hover:bg-white dark:hover:bg-slate-900 hover:text-red-500 transition-all shrink-0">
-              <span className="material-symbols-outlined text-sm">logout</span>
-              Sign Out
-            </button>
-          </div>
+          <div className="flex flex-col lg:flex-row gap-6">
+
+            {/* ── Settings sidebar (like FAQ categories) ── */}
+            <aside className="lg:w-56 shrink-0">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3 px-1">Settings</p>
+              <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0">
+                {TABS.map(tab => {
+                  const isActive = activeTab === tab.id
+                  return (
+                    <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all shrink-0 lg:w-full text-left border ${
+                        isActive
+                          ? tab.id === 'danger' ? 'bg-red-500 text-white border-red-500 shadow-md' : 'bg-white dark:bg-slate-900 shadow-md border-primary/20 text-slate-900 dark:text-white'
+                          : tab.id === 'danger' ? 'border-transparent text-red-400 hover:bg-white dark:hover:bg-slate-900 hover:text-red-500' : 'border-transparent text-slate-500 hover:bg-white dark:hover:bg-slate-900 hover:text-slate-700'
+                      }`}>
+                      <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 material-symbols-outlined text-sm ${
+                        isActive
+                          ? tab.id === 'danger' ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
+                          : tab.id === 'danger' ? 'bg-red-50 dark:bg-red-900/20 text-red-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                      }`}>{tab.icon}</span>
+                      <span className="truncate">{tab.label}</span>
+                    </button>
+                  )
+                })}
+                <button onClick={logout}
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all shrink-0 lg:w-full text-left border border-transparent text-slate-500 hover:bg-white dark:hover:bg-slate-900 hover:text-red-500 mt-0 lg:mt-2 lg:border-t lg:border-slate-100 lg:dark:border-slate-800 lg:rounded-none lg:rounded-b-2xl">
+                  <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 material-symbols-outlined text-sm bg-slate-100 dark:bg-slate-800 text-slate-400">logout</span>
+                  <span className="truncate">Sign Out</span>
+                </button>
+              </div>
+            </aside>
+
+            {/* ── Main content ── */}
+            <div className="flex-1 min-w-0 space-y-5">
 
             {/* ─── PROFILE TAB ─── */}
             {activeTab === 'profile' && (
@@ -1115,6 +1126,8 @@ export function SettingsPage() {
                 </div>
               </div>
             )}
+            </div>
+          </div>
         </main>
       </div>
     </div>
