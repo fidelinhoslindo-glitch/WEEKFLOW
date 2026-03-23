@@ -783,13 +783,11 @@ export function SettingsPage() {
                 {tab.label}
               </button>
             ))}
-            <div className="ml-auto shrink-0">
-              <button onClick={logout}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold border border-transparent text-slate-500 hover:bg-white dark:hover:bg-slate-900 hover:text-red-500 transition-all">
-                <span className="material-symbols-outlined text-sm">logout</span>
-                Sign Out
-              </button>
-            </div>
+            <button onClick={logout}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold border border-transparent text-slate-500 hover:bg-white dark:hover:bg-slate-900 hover:text-red-500 transition-all shrink-0">
+              <span className="material-symbols-outlined text-sm">logout</span>
+              Sign Out
+            </button>
           </div>
 
             {/* ─── PROFILE TAB ─── */}
