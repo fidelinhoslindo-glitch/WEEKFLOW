@@ -764,10 +764,10 @@ export function SettingsPage() {
       <div className="flex-1 flex flex-col min-w-0">
         <Header title={t.settings.title || 'Settings'} />
 
-        <main className="flex-1 p-4 lg:p-8 space-y-5 max-w-3xl mx-auto w-full">
+        <main className="flex-1 p-4 lg:p-8 space-y-6 max-w-3xl mx-auto w-full">
 
           {/* ── Tab nav ── */}
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+          <div className="flex flex-wrap items-center gap-2">
             {TABS.map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold shrink-0 transition-all border ${
@@ -926,7 +926,8 @@ export function SettingsPage() {
                         <p className="text-xs text-slate-500 mt-0.5">{user.plan === 'Free' ? 'Free forever' : 'Billed monthly · $8/mo'}</p>
                       </div>
                     </div>
-                    <button className="px-4 py-2 border-2 rounded-xl text-sm font-bold transition-all hover:text-white"
+                    <button onClick={() => navigate('checkout')}
+                      className="px-4 py-2 border-2 rounded-xl text-sm font-bold transition-all hover:text-white"
                       style={{ borderColor: avatarColor + '44', color: avatarColor }}
                       onMouseEnter={e => { e.currentTarget.style.backgroundColor = avatarColor; e.currentTarget.style.color = 'white' }}
                       onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = avatarColor }}>
