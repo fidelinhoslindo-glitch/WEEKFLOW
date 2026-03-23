@@ -809,7 +809,7 @@ export function SettingsPage() {
 
                   <div className="px-5 pb-5">
                     {/* Avatar row */}
-                    <div className="flex items-end gap-4 -mt-9 mb-5">
+                    <div className="flex items-center gap-4 -mt-10 mb-5">
                       <div className="relative shrink-0">
                         <div className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 shadow-xl">
                           {user.avatarImg ? (
@@ -823,7 +823,7 @@ export function SettingsPage() {
                         </div>
                         <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-emerald-400 border-2 border-white dark:border-slate-900" />
                       </div>
-                      <div className="pb-1">
+                      <div className="mt-10">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h2 className="text-lg font-black">{user.name}</h2>
                           <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full"
