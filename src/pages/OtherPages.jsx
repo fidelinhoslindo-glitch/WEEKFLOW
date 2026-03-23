@@ -767,7 +767,7 @@ export function SettingsPage() {
         <main className="flex-1 p-4 lg:p-8 space-y-6 max-w-3xl mx-auto w-full">
 
           {/* ── Tab nav ── */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
             {TABS.map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold shrink-0 transition-all border ${
