@@ -286,6 +286,11 @@ export function AppProvider({ children }) {
   const isElectron = typeof window !== 'undefined' && !!window.electron
 
   const getPageFromUrl = () => {
+    // Stripe checkout return — redirect to checkout page
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('checkout') === 'success' || params.get('checkout') === 'canceled') {
+      return 'checkout'
+    }
     if (isElectron) {
       const hash = window.location.hash.replace('#', '')
       return hash && VALID_PAGES.includes(hash) ? hash : null
