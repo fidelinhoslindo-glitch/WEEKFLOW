@@ -764,42 +764,33 @@ export function SettingsPage() {
       <div className="flex-1 flex flex-col min-w-0">
         <Header title={t.settings.title || 'Settings'} />
 
-        <div className="flex-1 flex flex-col lg:flex-row">
-          {/* ── Sidebar nav ── */}
-          <aside className="lg:w-60 shrink-0 bg-white dark:bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800">
-            {/* Mobile: horizontal chips */}
-            <div className="lg:hidden flex overflow-x-auto scrollbar-hide px-3 py-3 gap-2">
-              {TABS.map(tab => (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold shrink-0 transition-all ${activeTab===tab.id ? tab.id==='danger' ? 'bg-red-500 text-white' : 'bg-primary text-white shadow-md shadow-primary/25' : tab.id==='danger' ? 'text-red-400 bg-red-50 dark:bg-red-900/20' : 'text-slate-500 bg-slate-100 dark:bg-slate-800'}`}>
-                  <span className="material-symbols-outlined text-sm">{tab.icon}</span>
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-            {/* Desktop: vertical */}
-            <nav className="hidden lg:flex flex-col p-3 pt-5 gap-0.5">
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-3 mb-3">Settings</p>
-              {TABS.map(tab => (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className={`group flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-left ${activeTab===tab.id ? tab.id==='danger' ? 'bg-red-500 text-white shadow-lg' : 'bg-primary text-white shadow-lg shadow-primary/20' : tab.id==='danger' ? 'text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-                  <span className={`material-symbols-outlined text-base transition-all ${activeTab===tab.id ? '' : 'group-hover:scale-110'}`}>{tab.icon}</span>
-                  <span className="text-sm font-semibold">{tab.label}</span>
-                  {activeTab===tab.id && <span className="material-symbols-outlined text-sm ml-auto opacity-60">chevron_right</span>}
-                </button>
-              ))}
-              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <button onClick={logout}
-                  className="group flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all w-full">
-                  <span className="material-symbols-outlined text-base group-hover:scale-110 transition-transform">logout</span>
-                  <span className="text-sm font-semibold">Sign Out</span>
-                </button>
-              </div>
-            </nav>
-          </aside>
+        <main className="flex-1 p-4 lg:p-8 space-y-5 max-w-3xl mx-auto w-full">
 
-          {/* ── Main content ── */}
-          <main className="flex-1 p-4 lg:p-8 overflow-y-auto space-y-5 max-w-2xl">
+          {/* ── Tab nav ── */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+            {TABS.map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold shrink-0 transition-all border ${
+                  activeTab === tab.id
+                    ? tab.id === 'danger' ? 'bg-red-500 text-white border-red-500 shadow-lg' : 'bg-white dark:bg-slate-900 border-primary/20 text-slate-900 dark:text-white shadow-md'
+                    : tab.id === 'danger' ? 'border-transparent text-red-400 hover:bg-white dark:hover:bg-slate-900 hover:text-red-500' : 'border-transparent text-slate-500 hover:bg-white dark:hover:bg-slate-900 hover:text-slate-700'
+                }`}>
+                <span className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 material-symbols-outlined text-sm ${
+                  activeTab === tab.id
+                    ? tab.id === 'danger' ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
+                    : tab.id === 'danger' ? 'bg-red-50 dark:bg-red-900/20 text-red-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                }`}>{tab.icon}</span>
+                {tab.label}
+              </button>
+            ))}
+            <div className="ml-auto shrink-0">
+              <button onClick={logout}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold border border-transparent text-slate-500 hover:bg-white dark:hover:bg-slate-900 hover:text-red-500 transition-all">
+                <span className="material-symbols-outlined text-sm">logout</span>
+                Sign Out
+              </button>
+            </div>
+          </div>
 
             {/* ─── PROFILE TAB ─── */}
             {activeTab === 'profile' && (
@@ -944,13 +935,6 @@ export function SettingsPage() {
                   </div>
                 </div>
 
-                {/* Mobile sign out */}
-                <div className="lg:hidden">
-                  <button onClick={logout} className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-red-200 dark:border-red-800 text-red-500 font-bold text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                    <span className="material-symbols-outlined text-sm">logout</span>
-                    Sign Out
-                  </button>
-                </div>
               </>
             )}
 
@@ -1132,8 +1116,7 @@ export function SettingsPage() {
                 </div>
               </div>
             )}
-          </main>
-        </div>
+        </main>
       </div>
     </div>
   )
