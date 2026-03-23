@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
+import { useLanguage } from '../context/LanguageContext'
+import { supabaseResetPassword, supabaseResendVerification } from '../utils/supabase'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 const sbReady = !!(SUPABASE_URL && SUPABASE_KEY)
 
-// Returns the post-login destination based on whether onboarding was completed.
 const getInitialPage = () => {
   try {
     const ob = JSON.parse(localStorage.getItem('wf_onboard') || '{}')
@@ -15,7 +16,9 @@ const getInitialPage = () => {
 
 export default function LoginPage() {
   const { signIn, signUp, signInWithGoogle, signInWithApple, login, navigate } = useApp()
+  const { t } = useLanguage()
 
+  // Main form state
   const [tab,      setTab]      = useState('signin')
   const [name,     setName]     = useState('')
   const [email,    setEmail]    = useState('')
@@ -24,43 +27,61 @@ export default function LoginPage() {
   const [loading,  setLoading]  = useState(false)
   const [oauthLoading, setOauthLoading] = useState('')
   const [error,    setError]    = useState('')
-  const [success,  setSuccess]  = useState('')
 
-  // ── Handle OAuth redirect back ─────────────────────────────────────────────
+  // Email verification modal
+  const [showVerifyModal, setShowVerifyModal] = useState(false)
+  const [verifyEmail,     setVerifyEmail]     = useState('')
+  const [resending,       setResending]       = useState(false)
+  const [resendSuccess,   setResendSuccess]   = useState(false)
+
+  // Forgot password / reset view: 'form' | 'forgot' | 'reset'
+  const [view,          setView]          = useState('form')
+  const [forgotEmail,   setForgotEmail]   = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotMsg,     setForgotMsg]     = useState('')
+  const [resetToken,    setResetToken]    = useState('')
+  const [newPassword,   setNewPassword]   = useState('')
+  const [confirmPass,   setConfirmPass]   = useState('')
+  const [resetLoading,  setResetLoading]  = useState(false)
+  const [resetMsg,      setResetMsg]      = useState('')
+
+  // ── Handle OAuth redirect + password reset token in URL hash ──────────────
   useEffect(() => {
     const hash = window.location.hash
-    if (!hash.includes('access_token=')) return
+    if (!hash) return
 
     const params = new URLSearchParams(hash.replace('#', ''))
-    const token  = params.get('access_token')
-    if (!token) return
+    const accessToken = params.get('access_token')
+    const type = params.get('type')
 
-    localStorage.setItem('wf_token', token)
+    if (!accessToken) return
     window.history.replaceState({}, '', window.location.pathname)
 
+    if (type === 'recovery') {
+      setResetToken(accessToken)
+      setView('reset')
+      return
+    }
+
+    localStorage.setItem('wf_token', accessToken)
     fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` }
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${accessToken}` }
     })
       .then(r => r.json())
       .then(u => {
         const userName  = u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split('@')[0] || 'User'
-        const userEmail = u.email || ''
-        login(userName, userEmail, null)
+        login(userName, u.email || '', null)
         navigate(getInitialPage())
       })
-      .catch(() => {
-        login('User', '', null)
-        navigate(getInitialPage())
-      })
+      .catch(() => { login('User', '', null); navigate(getInitialPage()) })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // intentional: run once on mount to handle OAuth redirect
+  }, [])
 
-  const clearMessages = () => { setError(''); setSuccess('') }
+  const clearMessages = () => { setError('') }
 
   // ── Email/password submit ──────────────────────────────────────────────────
   const handleSubmit = async () => {
     clearMessages()
-
     if (!email.trim())    { setError('Please enter your email.'); return }
     if (!password.trim()) { setError('Please enter your password.'); return }
     if (tab === 'signup') {
@@ -79,12 +100,11 @@ export default function LoginPage() {
         }
         navigate(getInitialPage())
       } else {
-        // Sign up
         if (sbReady) {
           const res = await signUp(name.trim(), email.trim(), password)
           if (res?.needsConfirmation) {
-            setSuccess('Account created! Check your email to confirm, then sign in.')
-            setTab('signin')
+            setVerifyEmail(email.trim())
+            setShowVerifyModal(true)
           } else {
             navigate(getInitialPage())
           }
@@ -95,7 +115,7 @@ export default function LoginPage() {
         }
       }
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.')
+      setError(err.message || t.common.unexpectedError)
     }
     setLoading(false)
   }
@@ -105,13 +125,8 @@ export default function LoginPage() {
     clearMessages()
     if (!sbReady) { setError('Connect Supabase first — Settings → Cloud Sync.'); return }
     setOauthLoading('google')
-    try {
-      await signInWithGoogle()
-      // Page will redirect, no further action needed
-    } catch (err) {
-      setError(err.message || 'Google login failed.')
-      setOauthLoading('')
-    }
+    try { await signInWithGoogle() }
+    catch (err) { setError(err.message || 'Google login failed.'); setOauthLoading('') }
   }
 
   // ── Apple OAuth ───────────────────────────────────────────────────────────
@@ -119,47 +134,214 @@ export default function LoginPage() {
     clearMessages()
     if (!sbReady) { setError('Connect Supabase first — Settings → Cloud Sync.'); return }
     setOauthLoading('apple')
-    try {
-      await signInWithApple()
-    } catch (err) {
-      setError(err.message || 'Apple login failed.')
-      setOauthLoading('')
-    }
+    try { await signInWithApple() }
+    catch (err) { setError(err.message || 'Apple login failed.'); setOauthLoading('') }
   }
 
-  const tabs = [['signin','Sign In'],['signup','Sign Up']]
+  // ── Resend verification email ─────────────────────────────────────────────
+  const handleResend = async () => {
+    setResending(true)
+    setResendSuccess(false)
+    try {
+      await supabaseResendVerification(verifyEmail)
+      setResendSuccess(true)
+    } catch { /* silent */ }
+    setResending(false)
+  }
 
+  // ── Forgot password ───────────────────────────────────────────────────────
+  const handleForgot = async () => {
+    if (!forgotEmail.trim()) return
+    setForgotLoading(true)
+    setForgotMsg('')
+    try {
+      await supabaseResetPassword(forgotEmail.trim())
+      setForgotMsg(t.login.resetEmailSent)
+    } catch (err) {
+      setForgotMsg(err.message || t.common.unexpectedError)
+    }
+    setForgotLoading(false)
+  }
+
+  // ── Reset password ────────────────────────────────────────────────────────
+  const handleReset = async () => {
+    if (newPassword !== confirmPass) { setResetMsg(t.login.passwordsMismatch); return }
+    setResetLoading(true)
+    setResetMsg('')
+    try {
+      const { supabaseUpdatePassword } = await import('../utils/supabase')
+      await supabaseUpdatePassword(resetToken, newPassword)
+      setResetMsg(t.login.passwordUpdated)
+      setTimeout(() => { setView('form'); setResetToken('') }, 2000)
+    } catch (err) {
+      setResetMsg(err.message || t.common.unexpectedError)
+    }
+    setResetLoading(false)
+  }
+
+  const tabs = [['signin', t.login.signIn], ['signup', t.login.signUp]]
+
+  // ── VERIFY EMAIL MODAL ────────────────────────────────────────────────────
+  if (showVerifyModal) {
+    return (
+      <div className="min-h-screen bg-[#07090f] flex items-center justify-center p-4">
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-[#6467f2] opacity-10 blur-[120px]"/>
+          <div className="absolute -bottom-32 -right-32 w-[400px] h-[400px] rounded-full bg-[#8b5cf6] opacity-10 blur-[100px]"/>
+        </div>
+        <div className="relative w-full max-w-sm text-center">
+          <div className="bg-[#0d0f1c] border border-white/[0.07] rounded-2xl p-8 shadow-2xl space-y-6">
+            <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto">
+              <span className="material-symbols-outlined text-emerald-400 text-3xl">mark_email_unread</span>
+            </div>
+            <div>
+              <h2 className="text-white text-xl font-black mb-2">{t.login.verifyTitle}</h2>
+              <p className="text-slate-400 text-sm">{t.login.verifySent}</p>
+              <p className="text-[#6467f2] font-bold mt-1 break-all">{verifyEmail}</p>
+            </div>
+            {resendSuccess ? (
+              <p className="text-emerald-400 text-sm font-semibold">{t.login.resendSuccess}</p>
+            ) : (
+              <button onClick={handleResend} disabled={resending}
+                className="text-slate-400 hover:text-white text-sm transition-colors disabled:opacity-50">
+                {resending ? t.login.resending : t.login.resendEmail}
+              </button>
+            )}
+            <button
+              onClick={() => { setShowVerifyModal(false); setTab('signin') }}
+              className="w-full py-3 bg-gradient-to-r from-[#6467f2] to-[#8b5cf6] text-white font-bold rounded-xl text-sm hover:opacity-90 transition-all shadow-lg shadow-[#6467f2]/30">
+              {t.login.goToSignIn}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── FORGOT PASSWORD VIEW ──────────────────────────────────────────────────
+  if (view === 'forgot') {
+    return (
+      <div className="min-h-screen bg-[#07090f] flex items-center justify-center p-4">
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-[#6467f2] opacity-10 blur-[120px]"/>
+          <div className="absolute -bottom-32 -right-32 w-[400px] h-[400px] rounded-full bg-[#8b5cf6] opacity-10 blur-[100px]"/>
+        </div>
+        <div className="relative w-full max-w-sm">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#6467f2] to-[#8b5cf6] flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-[#6467f2]/40">
+              <span className="text-white font-black text-2xl">W</span>
+            </div>
+            <h1 className="text-white text-2xl font-black tracking-tight">{t.login.forgotTitle}</h1>
+            <p className="text-slate-500 text-sm mt-1">{t.login.forgotSubtitle}</p>
+          </div>
+          <div className="bg-[#0d0f1c] border border-white/[0.07] rounded-2xl p-6 shadow-2xl space-y-4">
+            {forgotMsg && (
+              <div className={`flex items-start gap-2.5 rounded-xl px-4 py-3 ${forgotMsg === t.login.resetEmailSent ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
+                <span className={`material-symbols-outlined text-sm mt-0.5 shrink-0 ${forgotMsg === t.login.resetEmailSent ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {forgotMsg === t.login.resetEmailSent ? 'check_circle' : 'error'}
+                </span>
+                <p className={`text-sm ${forgotMsg === t.login.resetEmailSent ? 'text-emerald-300' : 'text-red-300'}`}>{forgotMsg}</p>
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">{t.login.emailAddress}</label>
+              <input
+                type="email" autoComplete="email"
+                placeholder={t.login.emailPlaceholder}
+                value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleForgot()}
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#6467f2] transition-colors"
+              />
+            </div>
+            <button onClick={handleForgot} disabled={forgotLoading || !forgotEmail.trim()}
+              className="w-full py-3 bg-gradient-to-r from-[#6467f2] to-[#8b5cf6] text-white font-bold rounded-xl text-sm hover:opacity-90 transition-all shadow-lg shadow-[#6467f2]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+              {forgotLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : null}
+              {t.login.sendResetLink}
+            </button>
+            <button onClick={() => setView('form')} className="w-full text-sm text-slate-500 hover:text-slate-300 transition-colors py-1">
+              ← {t.login.backToLogin}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── RESET PASSWORD VIEW ───────────────────────────────────────────────────
+  if (view === 'reset') {
+    return (
+      <div className="min-h-screen bg-[#07090f] flex items-center justify-center p-4">
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-[#6467f2] opacity-10 blur-[120px]"/>
+        </div>
+        <div className="relative w-full max-w-sm">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#6467f2] to-[#8b5cf6] flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-[#6467f2]/40">
+              <span className="text-white font-black text-2xl">W</span>
+            </div>
+            <h1 className="text-white text-2xl font-black tracking-tight">{t.login.resetTitle}</h1>
+          </div>
+          <div className="bg-[#0d0f1c] border border-white/[0.07] rounded-2xl p-6 shadow-2xl space-y-4">
+            {resetMsg && (
+              <div className={`flex items-start gap-2.5 rounded-xl px-4 py-3 ${resetMsg === t.login.passwordUpdated ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
+                <span className={`material-symbols-outlined text-sm mt-0.5 shrink-0 ${resetMsg === t.login.passwordUpdated ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {resetMsg === t.login.passwordUpdated ? 'check_circle' : 'error'}
+                </span>
+                <p className={`text-sm ${resetMsg === t.login.passwordUpdated ? 'text-emerald-300' : 'text-red-300'}`}>{resetMsg}</p>
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">{t.login.newPassword}</label>
+              <input type="password" placeholder={t.login.passwordPlaceholder}
+                value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#6467f2] transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">{t.login.confirmPassword}</label>
+              <input type="password" placeholder={t.login.passwordPlaceholder}
+                value={confirmPass} onChange={e => setConfirmPass(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleReset()}
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#6467f2] transition-colors"
+              />
+            </div>
+            <button onClick={handleReset} disabled={resetLoading || !newPassword || !confirmPass}
+              className="w-full py-3 bg-gradient-to-r from-[#6467f2] to-[#8b5cf6] text-white font-bold rounded-xl text-sm hover:opacity-90 transition-all shadow-lg shadow-[#6467f2]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+              {resetLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : null}
+              {t.login.updatePassword}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── MAIN LOGIN FORM ───────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#07090f] flex items-center justify-center p-4">
-
-      {/* Background glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-[#6467f2] opacity-10 blur-[120px]"/>
         <div className="absolute -bottom-32 -right-32 w-[400px] h-[400px] rounded-full bg-[#8b5cf6] opacity-10 blur-[100px]"/>
       </div>
 
       <div className="relative w-full max-w-sm">
-
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#6467f2] to-[#8b5cf6] flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-[#6467f2]/40">
             <span className="text-white font-black text-2xl">W</span>
           </div>
           <h1 className="text-white text-2xl font-black tracking-tight">WeekFlow</h1>
-          <p className="text-slate-500 text-sm mt-1">Organize your week. Find your flow.</p>
+          <p className="text-slate-500 text-sm mt-1">{t.login.tagline}</p>
         </div>
 
         {/* Card */}
         <div className="bg-[#0d0f1c] border border-white/[0.07] rounded-2xl p-6 shadow-2xl">
-
           {/* Tabs */}
           <div className="flex gap-1 bg-white/[0.04] p-1 rounded-xl mb-6">
             {tabs.map(([val, label]) => (
               <button key={val} onClick={() => { setTab(val); clearMessages() }}
                 className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-                  tab === val
-                    ? 'bg-[#6467f2] text-white shadow-lg shadow-[#6467f2]/30'
-                    : 'text-slate-500 hover:text-slate-300'
+                  tab === val ? 'bg-[#6467f2] text-white shadow-lg shadow-[#6467f2]/30' : 'text-slate-500 hover:text-slate-300'
                 }`}>
                 {label}
               </button>
@@ -174,21 +356,12 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Success */}
-          {success && (
-            <div className="flex items-start gap-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3 mb-4">
-              <span className="material-symbols-outlined text-emerald-400 text-sm mt-0.5 shrink-0">check_circle</span>
-              <p className="text-emerald-300 text-sm">{success}</p>
-            </div>
-          )}
-
           {/* Name field (signup only) */}
           {tab === 'signup' && (
             <div className="mb-4">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Full Name</label>
-              <input
-                type="text" autoComplete="name"
-                placeholder="Gustavo Fidelis"
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">{t.login.fullName}</label>
+              <input type="text" autoComplete="name"
+                placeholder={t.login.namePlaceholder}
                 value={name} onChange={e => setName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                 className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#6467f2] transition-colors"
@@ -198,10 +371,9 @@ export default function LoginPage() {
 
           {/* Email */}
           <div className="mb-4">
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Email address</label>
-            <input
-              type="email" autoComplete="email"
-              placeholder="you@email.com"
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">{t.login.emailAddress}</label>
+            <input type="email" autoComplete="email"
+              placeholder={t.login.emailPlaceholder}
               value={email} onChange={e => setEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#6467f2] transition-colors"
@@ -209,13 +381,13 @@ export default function LoginPage() {
           </div>
 
           {/* Password */}
-          <div className="mb-6">
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Password</label>
+          <div className="mb-2">
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">{t.login.password}</label>
             <div className="relative">
               <input
                 type={showPass ? 'text' : 'password'}
                 autoComplete={tab === 'signin' ? 'current-password' : 'new-password'}
-                placeholder="••••••••"
+                placeholder={t.login.passwordPlaceholder}
                 value={password} onChange={e => setPassword(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                 className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 pr-11 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#6467f2] transition-colors"
@@ -227,26 +399,36 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Submit button */}
+          {/* Forgot password link (signin only) */}
+          {tab === 'signin' && (
+            <div className="flex justify-end mb-4">
+              <button onClick={() => setView('forgot')}
+                className="text-xs text-slate-500 hover:text-[#6467f2] transition-colors">
+                {t.login.forgotPassword}
+              </button>
+            </div>
+          )}
+          {tab !== 'signin' && <div className="mb-6" />}
+
+          {/* Submit */}
           <button onClick={handleSubmit} disabled={loading}
             className="w-full py-3 bg-gradient-to-r from-[#6467f2] to-[#8b5cf6] text-white font-bold rounded-xl text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-[#6467f2]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
             {loading ? (
               <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Loading...</>
             ) : (
-              <>{tab === 'signin' ? 'Sign In' : 'Create Account'} <span className="material-symbols-outlined text-sm">arrow_forward</span></>
+              <>{tab === 'signin' ? t.login.signIn : t.login.createAccount} <span className="material-symbols-outlined text-sm">arrow_forward</span></>
             )}
           </button>
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-white/[0.07]"/>
-            <span className="text-xs text-slate-600 font-medium">Or continue with</span>
+            <span className="text-xs text-slate-600 font-medium">{t.login.orContinueWith}</span>
             <div className="flex-1 h-px bg-white/[0.07]"/>
           </div>
 
           {/* OAuth buttons */}
           <div className="grid grid-cols-2 gap-3 mb-4">
-            {/* Google */}
             <button onClick={handleGoogle} disabled={!!oauthLoading}
               className="flex items-center justify-center gap-2 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-sm font-semibold text-white hover:bg-white/[0.09] active:scale-[0.98] transition-all disabled:opacity-40">
               {oauthLoading === 'google' ? (
@@ -261,8 +443,6 @@ export default function LoginPage() {
               )}
               Google
             </button>
-
-            {/* Apple */}
             <button onClick={handleApple} disabled={!!oauthLoading}
               className="flex items-center justify-center gap-2 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-sm font-semibold text-white hover:bg-white/[0.09] active:scale-[0.98] transition-all disabled:opacity-40">
               {oauthLoading === 'apple' ? (
@@ -280,7 +460,7 @@ export default function LoginPage() {
           <div className="flex items-center justify-center gap-1.5 mt-5">
             <div className={`w-1.5 h-1.5 rounded-full ${sbReady ? 'bg-emerald-500' : 'bg-slate-600'}`}/>
             <p className="text-xs text-slate-600">
-              {sbReady ? 'Connected to Supabase · Data syncs across all devices' : 'Offline mode · Data saved locally'}
+              {sbReady ? t.login.connectedSupabase : t.login.offlineMode}
             </p>
           </div>
         </div>

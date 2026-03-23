@@ -1,5 +1,6 @@
 import { useState, useEffect, Component } from 'react'
 import { useApp } from './context/AppContext'
+import { useLanguage } from './context/LanguageContext'
 
 // ── Pages ────────────────────────────────────────────────────────────────────
 import LandingPage       from './pages/LandingPage'
@@ -16,6 +17,7 @@ import ShareWeekPage     from './pages/ShareWeekPage'
 import CheckoutPage      from './pages/CheckoutPage'
 import AdminPage         from './pages/AdminPage'
 import DownloadPage      from './pages/DownloadPage'
+import FAQPage           from './pages/FAQPage'
 import {
   DailyDetailPage, RoutineTemplatesPage, CalendarPage,
   AnalyticsPage, SettingsPage, ExportPage, EmptyStatesPage,
@@ -30,6 +32,7 @@ import BottomNav      from './components/BottomNav'
 import Confetti       from './components/Confetti'
 import SplashScreen   from './components/SplashScreen'
 import AIChat         from './components/AIChat'
+import SupportChat    from './components/SupportChat'
 import TourGuide, { useTour } from './components/TourGuide'
 import FlowCircleWidget from './components/FlowCircleWidget'
 import SetupWizard    from './components/SetupWizard'
@@ -57,12 +60,13 @@ const PAGES = {
   checkout:         CheckoutPage,
   admin:            AdminPage,
   download:         DownloadPage,
+  faq:              FAQPage,
 }
 
 const APP_PAGES = [
   'dashboard','planner','daily','calendar','analytics',
   'settings','pomodoro','empty','notes','smart-calendar',
-  'flowcircle',
+  'flowcircle','faq','download',
 ]
 
 // ── ErrorBoundary — catches silent React crashes ──────────────────────────────
@@ -111,6 +115,7 @@ function AppInner() {
     showAIChat, setShowAIChat,
     isLoggedIn,
   } = useApp()
+  const { t } = useLanguage()
 
   const { show: showTour, finish: finishTour } = useTour()
 
@@ -137,6 +142,9 @@ function AppInner() {
     setSplashDone(true)
   }
 
+  // Support chat floating button
+  const [showSupport, setShowSupport] = useState(false)
+
   if (!setupDone) {
     return <SetupWizard onFinish={() => setSetupDone(true)} />
   }
@@ -145,7 +153,6 @@ function AppInner() {
     return <SplashScreen onDone={handleSplashDone} />
   }
 
-  // Safe page lookup — fall back to LandingPage if unknown
   const PageComponent = PAGES[page] ?? LandingPage
   const showBottomNav = APP_PAGES.includes(page)
 
@@ -153,12 +160,12 @@ function AppInner() {
     <div className="min-h-screen bg-bg-light dark:bg-bg-dark text-slate-900 dark:text-slate-100 transition-colors duration-300">
       {updateReady && (
         <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between gap-4 px-4 py-2.5 bg-primary text-white text-sm font-medium shadow-lg">
-          <span>⬆️ Nova versão do WeekFlow pronta para instalar.</span>
+          <span>⬆️ {t.app.updateBanner}</span>
           <button
             onClick={() => window.electron.installUpdate()}
             className="shrink-0 bg-white text-primary font-bold px-3 py-1 rounded-lg hover:bg-slate-100 transition-colors"
           >
-            Reiniciar agora
+            {t.app.updateBtn}
           </button>
         </div>
       )}
@@ -178,6 +185,22 @@ function AppInner() {
       {isLoggedIn && showBottomNav && <FlowCircleWidget />}
       <ToastContainer />
       <KeyboardHint />
+
+      {/* Support Chat floating button */}
+      {isLoggedIn && showBottomNav && (
+        <>
+          {showSupport && <SupportChat onClose={() => setShowSupport(false)} />}
+          <button
+            onClick={() => setShowSupport(s => !s)}
+            className="fixed bottom-24 right-4 sm:bottom-6 sm:right-20 z-40 w-12 h-12 rounded-full bg-gradient-to-br from-primary to-purple-600 text-white shadow-2xl shadow-primary/40 flex items-center justify-center hover:scale-110 transition-all active:scale-95"
+            aria-label="Open support chat"
+          >
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: showSupport ? "'FILL' 1" : "'FILL' 0" }}>
+              {showSupport ? 'close' : 'support_agent'}
+            </span>
+          </button>
+        </>
+      )}
     </div>
   )
 }
@@ -185,15 +208,16 @@ function AppInner() {
 // ── Keyboard shortcut pill ─────────────────────────────────────────────────--
 function KeyboardHint() {
   const { page } = useApp()
+  const { t } = useLanguage()
   if (!APP_PAGES.includes(page)) return null
   return (
     <div className="hidden lg:flex fixed bottom-4 right-4 items-center gap-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-400 shadow-lg z-40">
       <span className="material-symbols-outlined text-sm text-primary">keyboard</span>
-      <span><kbd className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">N</kbd> new task</span>
+      <span><kbd className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">N</kbd> {t.app.newTask}</span>
       <span className="text-slate-200 dark:text-slate-700">·</span>
-      <span><kbd className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">⌘K</kbd> search</span>
+      <span><kbd className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">⌘K</kbd> {t.app.searchShort}</span>
       <span className="text-slate-200 dark:text-slate-700">·</span>
-      <span><kbd className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">F</kbd> focus</span>
+      <span><kbd className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">F</kbd> {t.app.focus}</span>
     </div>
   )
 }

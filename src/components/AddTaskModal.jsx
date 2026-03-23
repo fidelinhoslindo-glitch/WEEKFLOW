@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
+import { useLanguage } from '../context/LanguageContext'
 import UpgradeModal from './UpgradeModal'
 
 const CATEGORIES = ['Work', 'Gym', 'Study', 'Rest', 'Other']
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const PRIORITIES = ['low', 'medium', 'high']
 
 const CAT_ICONS = { Work: 'work', Gym: 'fitness_center', Study: 'school', Rest: 'spa', Other: 'category' }
@@ -17,7 +16,7 @@ const CAT_COLORS = {
 }
 
 // Custom time picker wheel component
-function TimePicker({ value, onChange }) {
+function TimePicker({ value, onChange, labels = { hour: 'Hour', minute: 'Minute' } }) {
   const [h, m] = value.split(':').map(Number)
   const hours = Array.from({ length: 24 }, (_, i) => i)
   const minutes = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
@@ -53,7 +52,7 @@ function TimePicker({ value, onChange }) {
       <div className="grid grid-cols-2 gap-3">
         {/* Hours */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 text-center mb-2">Hour</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 text-center mb-2">{labels.hour}</p>
           <div className="h-28 overflow-y-auto scrollbar-hide rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
             {hours.map(hr => {
               const hr12 = hr === 0 ? 12 : hr > 12 ? hr - 12 : hr
@@ -69,7 +68,7 @@ function TimePicker({ value, onChange }) {
         </div>
         {/* Minutes */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 text-center mb-2">Minute</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 text-center mb-2">{labels.minute}</p>
           <div className="h-28 overflow-y-auto scrollbar-hide rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
             {minutes.map(mn => {
               const isSelected = mn === m || (m % 5 !== 0 && mn === Math.round(m / 5) * 5)
@@ -89,6 +88,10 @@ function TimePicker({ value, onChange }) {
 
 export default function AddTaskModal() {
   const { setShowAddTask, addTasks, TASK_COLORS, tasks, planLimits, isPro } = useApp()
+  const { t } = useLanguage()
+  // EN_DAYS = English keys stored in tasks; DAYS/DAY_SHORT = translated display labels only
+  const EN_DAYS_LIST = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+  const DAY_SHORT = t.common.weekdaysShort
   const [form, setForm] = useState({
     title: '', category: 'Work', days: ['Monday'], time: '09:00', duration: 60, priority: 'medium', notes: '', color: '', recurring: false
   })
@@ -131,8 +134,8 @@ export default function AddTaskModal() {
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h2 className="text-2xl font-bold">Create New Task</h2>
-            <p className="text-slate-500 text-sm mt-1">Schedule your activities for the upcoming week.</p>
+            <h2 className="text-2xl font-bold">{t.addTask.title}</h2>
+            <p className="text-slate-500 text-sm mt-1">{t.addTask.subtitle}</p>
           </div>
           <button onClick={() => setShowAddTask(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
             <span className="material-symbols-outlined text-slate-400">close</span>
@@ -144,11 +147,11 @@ export default function AddTaskModal() {
 
           {/* Task Name */}
           <div>
-            <label htmlFor="task-title" className="block text-sm font-semibold mb-2">Task Name</label>
+            <label htmlFor="task-title" className="block text-sm font-semibold mb-2">{t.addTask.taskName}</label>
             <input
               id="task-title"
               className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              placeholder="e.g. Morning Workout, Team Meeting..."
+              placeholder={t.addTask.taskPlaceholder}
               value={form.title}
               onChange={e => setForm({ ...form, title: e.target.value })}
             />
@@ -156,7 +159,7 @@ export default function AddTaskModal() {
 
           {/* Category — 5 items */}
           <div>
-            <label className="block text-sm font-semibold mb-3">Category</label>
+            <label className="block text-sm font-semibold mb-3">{t.addTask.category}</label>
             <div className="grid grid-cols-5 gap-2">
               {CATEGORIES.map(cat => {
                 const c = CAT_COLORS[cat]
@@ -165,7 +168,7 @@ export default function AddTaskModal() {
                   <button key={cat} onClick={() => setForm({ ...form, category: cat })}
                     className={`flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 transition-all ${selected ? `${c.border} ${c.bg}` : 'border-slate-200 dark:border-slate-700 hover:border-primary/30 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
                     <span className={`material-symbols-outlined text-xl ${selected ? c.text : 'text-slate-400'}`}>{CAT_ICONS[cat]}</span>
-                    <span className={`text-[11px] font-bold ${selected ? c.text : 'text-slate-500'}`}>{cat}</span>
+                    <span className={`text-[11px] font-bold ${selected ? c.text : 'text-slate-500'}`}>{t.common.categories[cat] || cat}</span>
                   </button>
                 )
               })}
@@ -175,17 +178,17 @@ export default function AddTaskModal() {
           {/* Days — multi-select pills */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-semibold">Day of Week</label>
+              <label className="block text-sm font-semibold">{t.addTask.dayOfWeek}</label>
               <span className="text-xs text-slate-400 font-medium">
-                {form.days.length === 0 ? 'Select at least one' : `${form.days.length} day${form.days.length > 1 ? 's' : ''} selected`}
+                {form.days.length === 0 ? t.addTask.selectAtLeast : `${form.days.length} ${t.addTask.daysSelected}`}
               </span>
             </div>
             <div className="flex gap-2 flex-wrap">
-              {DAYS.map((day, i) => {
-                const sel = form.days.includes(day)
+              {EN_DAYS_LIST.map((enDay, i) => {
+                const sel = form.days.includes(enDay)
                 const isWeekend = i >= 5
                 return (
-                  <button key={day} onClick={() => toggleDay(day)}
+                  <button key={enDay} onClick={() => toggleDay(enDay)}
                     className={`relative flex flex-col items-center justify-center w-12 h-12 rounded-xl border-2 font-bold text-xs transition-all ${
                       sel
                         ? 'bg-primary border-primary text-white shadow-md shadow-primary/30 scale-105'
@@ -202,20 +205,20 @@ export default function AddTaskModal() {
                   </button>
                 )
               })}
-              <button onClick={() => setForm(f => ({ ...f, days: DAYS.slice(0, 5) }))}
+              <button onClick={() => setForm(f => ({ ...f, days: EN_DAYS_LIST.slice(0, 5) }))}
                 className="h-12 px-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 text-[10px] font-bold text-slate-400 hover:border-primary hover:text-primary transition-all whitespace-nowrap">
-                Weekdays
+                {t.addTask.weekdaysBtn}
               </button>
-              <button onClick={() => setForm(f => ({ ...f, days: DAYS }))}
+              <button onClick={() => setForm(f => ({ ...f, days: EN_DAYS_LIST }))}
                 className="h-12 px-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 text-[10px] font-bold text-slate-400 hover:border-primary hover:text-primary transition-all whitespace-nowrap">
-                All
+                {t.addTask.allBtn}
               </button>
             </div>
           </div>
 
           {/* Time picker */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Start Time</label>
+            <label className="block text-sm font-semibold mb-2">{t.addTask.startTime}</label>
             <button onClick={() => setShowTimePicker(!showTimePicker)}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${showTimePicker ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-primary/40'}`}>
               <div className="flex items-center gap-3">
@@ -226,7 +229,7 @@ export default function AddTaskModal() {
             </button>
             {showTimePicker && (
               <div className="mt-2">
-                <TimePicker value={form.time} onChange={t => setForm({ ...form, time: t })} />
+                <TimePicker value={form.time} onChange={v => setForm({ ...form, time: v })} labels={{ hour: t.addTask.hour, minute: t.addTask.minute }} />
               </div>
             )}
           </div>
@@ -234,7 +237,7 @@ export default function AddTaskModal() {
           {/* Duration & Priority */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="task-duration" className="block text-sm font-semibold mb-2">Duration (minutes)</label>
+              <label htmlFor="task-duration" className="block text-sm font-semibold mb-2">{t.addTask.duration}</label>
               <div className="flex items-center gap-2">
                 <button onClick={() => setForm(f => ({ ...f, duration: Math.max(15, f.duration - 15) }))}
                   aria-label="Decrease duration"
@@ -254,7 +257,7 @@ export default function AddTaskModal() {
               <p className="text-xs text-slate-400 mt-1 text-center">{Math.floor(form.duration / 60)}h {form.duration % 60}m</p>
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-2">Priority</label>
+              <label className="block text-sm font-semibold mb-2">{t.addTask.priority}</label>
               <div className="flex gap-2">
                 {PRIORITIES.map(p => (
                   <button key={p} onClick={() => setForm({ ...form, priority: p })}
@@ -265,7 +268,7 @@ export default function AddTaskModal() {
                         :                  'bg-slate-400 text-white border-slate-400 shadow-md'
                         : 'bg-transparent text-slate-400 border-slate-200 dark:border-slate-700 hover:border-primary/40'
                     }`}>
-                    {p === 'high' ? '🔴' : p === 'medium' ? '🟡' : '⚪'} {p}
+                    {p === 'high' ? '🔴' : p === 'medium' ? '🟡' : '⚪'} {t.common.priorities[p] || p}
                   </button>
                 ))}
               </div>
@@ -275,7 +278,7 @@ export default function AddTaskModal() {
           {/* Color + Recurring */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold mb-2">Task Color</label>
+              <label className="block text-sm font-semibold mb-2">{t.addTask.taskColor}</label>
               <div className="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                 {TASK_COLORS.map(c => (
                   <button key={c.id} onClick={() => setForm({...form, color: c.id})} title={c.label}
@@ -285,14 +288,14 @@ export default function AddTaskModal() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-2">Recurring</label>
+              <label className="block text-sm font-semibold mb-2">{t.addTask.recurring}</label>
               <button onClick={() => setForm(f => ({...f, recurring: !f.recurring}))}
                 className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${form.recurring ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700'}`}>
                 <div className={`w-10 h-5 rounded-full transition-all relative ${form.recurring ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-600'}`}>
                   <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${form.recurring ? 'left-5' : 'left-0.5'}`} />
                 </div>
                 <span className={`text-sm font-semibold ${form.recurring ? 'text-primary' : 'text-slate-500'}`}>
-                  {form.recurring ? 'Weekly repeat' : 'One-time'}
+                  {form.recurring ? t.addTask.weeklyRepeat : t.addTask.oneTime}
                 </span>
               </button>
             </div>
@@ -300,10 +303,10 @@ export default function AddTaskModal() {
 
           {/* Notes */}
           <div>
-            <label htmlFor="task-notes" className="block text-sm font-semibold mb-2">Notes <span className="text-slate-400 font-normal">(optional)</span></label>
+            <label htmlFor="task-notes" className="block text-sm font-semibold mb-2">{t.addTask.notes} <span className="text-slate-400 font-normal">{t.addTask.notesOptional}</span></label>
             <textarea id="task-notes" rows={3}
               className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
-              placeholder="Any details or reminders..."
+              placeholder={t.addTask.notesPlaceholder}
               value={form.notes}
               onChange={e => setForm({ ...form, notes: e.target.value })} />
           </div>
@@ -312,7 +315,7 @@ export default function AddTaskModal() {
         {/* Footer */}
         <div className="flex items-center justify-between px-8 py-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
           <button onClick={() => setShowAddTask(false)} className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-            Cancel
+            {t.common.cancel}
           </button>
           <button onClick={handleSubmit}
             disabled={!form.title.trim() || form.days.length === 0}
@@ -322,7 +325,7 @@ export default function AddTaskModal() {
               : 'bg-primary text-white shadow-lg shadow-primary/25 hover:opacity-90'
             }`}>
             <span className="material-symbols-outlined text-sm">{saved ? 'check' : 'add'}</span>
-            {saved ? 'Task Added!' : form.days.length > 1 ? `Create ${form.days.length} Tasks` : 'Create Task'}
+            {saved ? t.addTask.taskAdded : form.days.length > 1 ? t.addTask.createTasks.replace('{n}', form.days.length) : t.addTask.createTask}
           </button>
         </div>
       </div>

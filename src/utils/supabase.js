@@ -82,6 +82,33 @@ export async function supabaseSignUp(email, password, name) {
   return d
 }
 
+export async function supabaseResendVerification(email) {
+  const res = await fetch(`${getSbUrl()}/auth/v1/resend`, {
+    method:'POST', headers:{'Content-Type':'application/json','apikey':getSbKey()},
+    body: JSON.stringify({ type: 'signup', email })
+  })
+  if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.error_description||'Resend failed') }
+}
+
+export async function supabaseResetPassword(email) {
+  const res = await fetch(`${getSbUrl()}/auth/v1/recover`, {
+    method:'POST', headers:{'Content-Type':'application/json','apikey':getSbKey()},
+    body: JSON.stringify({ email })
+  })
+  if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.error_description||'Reset failed') }
+}
+
+export async function supabaseUpdatePassword(token, newPassword) {
+  const res = await fetch(`${getSbUrl()}/auth/v1/user`, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json','apikey':getSbKey(),'Authorization':`Bearer ${token}`},
+    body: JSON.stringify({ password: newPassword })
+  })
+  const d = await res.json().catch(()=>({}))
+  if (!res.ok) throw new Error(d.error_description||'Update password failed')
+  return d
+}
+
 export async function supabaseSignOut(token) {
   await fetch(`${getSbUrl()}/auth/v1/logout`, {
     method:'POST', headers:{'apikey':getSbKey(),'Authorization':`Bearer ${token}`}

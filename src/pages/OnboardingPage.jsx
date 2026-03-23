@@ -1,25 +1,26 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
+import { useLanguage } from '../context/LanguageContext'
 
-const GOALS = [
-  { id: 'organized',   icon: 'grid_view',  title: 'Be Organized', desc: 'Everything in its right place, always.' },
-  { id: 'stress',      icon: 'spa',        title: 'Less Stress',   desc: 'A calm, structured week for peace of mind.' },
-  { id: 'routine',     icon: 'repeat',     title: 'Build Routine', desc: 'Lock in healthy, productive habits.' },
-  { id: 'productivity',icon: 'bolt',       title: 'Productivity',  desc: 'Accomplish more in less time.' },
+const GOAL_IDS = [
+  { id: 'organized',    icon: 'grid_view'  },
+  { id: 'stress',       icon: 'spa'        },
+  { id: 'routine',      icon: 'repeat'     },
+  { id: 'productivity', icon: 'bolt'       },
 ]
 
-const ACTIVITIES = [
-  { id: 'work',       icon: 'work',            label: 'Work'       },
-  { id: 'gym',        icon: 'fitness_center',  label: 'Gym'        },
-  { id: 'study',      icon: 'school',          label: 'Study'      },
-  { id: 'meditation', icon: 'self_improvement',label: 'Meditation' },
-  { id: 'cooking',    icon: 'restaurant',      label: 'Cooking'    },
-  { id: 'reading',    icon: 'menu_book',       label: 'Reading'    },
-  { id: 'social',     icon: 'people',          label: 'Social'     },
-  { id: 'rest',       icon: 'hotel',           label: 'Rest'       },
+const ACTIVITY_IDS = [
+  { id: 'work',       icon: 'work'            },
+  { id: 'gym',        icon: 'fitness_center'  },
+  { id: 'study',      icon: 'school'          },
+  { id: 'meditation', icon: 'self_improvement'},
+  { id: 'cooking',    icon: 'restaurant'      },
+  { id: 'reading',    icon: 'menu_book'       },
+  { id: 'social',     icon: 'people'          },
+  { id: 'rest',       icon: 'hotel'           },
 ]
 
-const STEPS = ['Goal', 'Activities', 'Work Hours', 'Wake Up', 'Days Off', 'Summary']
+const EN_DAYS_FULL  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 
 const fmt2 = (n) => String(n).padStart(2, '0')
 const fmtTime = (val) => {
@@ -31,7 +32,6 @@ const fmtTime = (val) => {
 // SVG illustration for each step
 function StepIllustration({ step }) {
   const illustrations = [
-    // 0: Goal — target
     <svg key={0} viewBox="0 0 200 160" fill="none" className="w-full h-full">
       <circle cx="100" cy="80" r="60" fill="#6467f2" fillOpacity="0.08"/>
       <circle cx="100" cy="80" r="42" fill="#6467f2" fillOpacity="0.12"/>
@@ -43,7 +43,6 @@ function StepIllustration({ step }) {
       <circle cx="148" cy="48"  r="4" fill="#8b5cf6" fillOpacity="0.7"/>
       <circle cx="158" cy="120" r="5" fill="#f59e0b" fillOpacity="0.7"/>
     </svg>,
-    // 1: Activities — grid icons
     <svg key={1} viewBox="0 0 200 160" fill="none" className="w-full h-full">
       <rect x="30" y="28" width="140" height="104" rx="12" fill="#f8f9ff" stroke="#6467f2" strokeWidth="2" strokeOpacity="0.4"/>
       <rect x="30" y="28" width="140" height="30" rx="12" fill="#6467f2" fillOpacity="0.15"/>
@@ -57,7 +56,6 @@ function StepIllustration({ step }) {
       <line x1="90" y1="118" x2="120" y2="118" stroke="#10b981" strokeWidth="2" strokeLinecap="round"/>
       <line x1="130" y1="118" x2="160" y2="118" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round"/>
     </svg>,
-    // 2: Work Hours — clock
     <svg key={2} viewBox="0 0 200 160" fill="none" className="w-full h-full">
       <circle cx="100" cy="80" r="52" fill="#6467f2" fillOpacity="0.08" stroke="#6467f2" strokeWidth="2" strokeOpacity="0.25"/>
       <circle cx="100" cy="80" r="4" fill="#6467f2"/>
@@ -70,7 +68,6 @@ function StepIllustration({ step }) {
       <circle cx="148" cy="42" r="10" fill="#10b981" fillOpacity="0.2"/>
       <circle cx="52"  cy="122" r="7" fill="#f59e0b" fillOpacity="0.3"/>
     </svg>,
-    // 3: Wake Up — sun
     <svg key={3} viewBox="0 0 200 160" fill="none" className="w-full h-full">
       <circle cx="100" cy="72" r="26" fill="#f59e0b" fillOpacity="0.9"/>
       {[0,45,90,135,180,225,270,315].map(i => {
@@ -82,7 +79,6 @@ function StepIllustration({ step }) {
       <circle cx="162" cy="33"  r="3" fill="#6467f2" fillOpacity="0.5"/>
       <circle cx="157" cy="112" r="6" fill="#10b981" fillOpacity="0.4"/>
     </svg>,
-    // 4: Days Off — wave / beach
     <svg key={4} viewBox="0 0 200 160" fill="none" className="w-full h-full">
       <rect x="18" y="104" width="164" height="38" rx="8" fill="#10b981" fillOpacity="0.2"/>
       <circle cx="100" cy="68" r="28" fill="#f59e0b" fillOpacity="0.3"/>
@@ -92,7 +88,6 @@ function StepIllustration({ step }) {
       <circle cx="48"  cy="116" r="7" fill="#6467f2" fillOpacity="0.3"/>
       <circle cx="152" cy="116" r="5" fill="#10b981" fillOpacity="0.3"/>
     </svg>,
-    // 5: Summary — checkmark
     <svg key={5} viewBox="0 0 200 160" fill="none" className="w-full h-full">
       <circle cx="100" cy="78" r="50" fill="#10b981" fillOpacity="0.1"/>
       <circle cx="100" cy="78" r="50" fill="none" stroke="#10b981" strokeWidth="3" strokeOpacity="0.4" strokeDasharray="12 6"/>
@@ -106,7 +101,7 @@ function StepIllustration({ step }) {
   return illustrations[step] || null
 }
 
-function OnboardingTimePicker({ label, value, onChange }) {
+function OnboardingTimePicker({ label, value, onChange, confirmLabel }) {
   const [open, setOpen] = useState(false)
   const [h, m] = value.split(':').map(Number)
   const ampm = h >= 12 ? 'PM' : 'AM'
@@ -171,7 +166,7 @@ function OnboardingTimePicker({ label, value, onChange }) {
             </div>
           </div>
           <button onClick={() => setOpen(false)} className="mt-3 w-full py-2 rounded-xl bg-primary/10 text-primary text-sm font-bold hover:bg-primary hover:text-white transition-all">
-            Confirm {fmtTime(value)}
+            {confirmLabel || 'Confirm'} {fmtTime(value)}
           </button>
         </div>
       )}
@@ -181,15 +176,18 @@ function OnboardingTimePicker({ label, value, onChange }) {
 
 export default function OnboardingPage() {
   const { navigate, setOnboardingData, login, user } = useApp()
+  const { t } = useLanguage()
   const [step, setStep] = useState(0)
   const [data, setData] = useState({
     goal: '', activities: [],
     workStart: '09:00', workEnd: '17:00',
+    noWork: false,
     wakeUp: '07:00',
     daysOff: ['Saturday', 'Sunday'],
   })
   const [finishing, setFinishing] = useState(false)
 
+  const STEPS = t.onboarding.steps
   const pct = Math.round(((step + 1) / STEPS.length) * 100)
 
   const toggleActivity = (id) => setData(d => ({
@@ -207,13 +205,12 @@ export default function OnboardingPage() {
   const finish = () => {
     setFinishing(true)
     setOnboardingData(data)
-    // Login as guest if not already logged in — prevents white screen
     login(user?.name || 'New User', user?.email || 'user@weekflow.app')
     setTimeout(() => navigate('dashboard'), 2000)
   }
 
-  const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const DAYS_FULL  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+  // English short names for display in Days Off step
+  const DAYS_SHORT = t.common.weekdaysShort
 
   return (
     <div className="min-h-screen bg-bg-light dark:bg-bg-dark text-slate-900 dark:text-slate-100 flex flex-col">
@@ -271,25 +268,28 @@ export default function OnboardingPage() {
             {step === 0 && (
               <section className="space-y-8">
                 <div className="text-center space-y-2">
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">What's your main goal?</h1>
-                  <p className="text-slate-500 dark:text-slate-400 text-lg">We'll tailor your schedule based on your focus.</p>
+                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{t.onboarding.goalTitle}</h1>
+                  <p className="text-slate-500 dark:text-slate-400 text-lg">{t.onboarding.goalSubtitle}</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {GOALS.map(g => (
-                    <button key={g.id} onClick={() => setData(d => ({ ...d, goal: g.id }))}
-                      className={'relative flex flex-col p-6 rounded-xl border-2 text-left transition-all ' +
-                        (data.goal === g.id ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-primary/50')}>
-                      <div className={'mb-4 w-12 h-12 rounded-lg flex items-center justify-center ' +
-                        (data.goal === g.id ? 'bg-primary text-white' : 'bg-primary/10 text-primary')}>
-                        <span className="material-symbols-outlined text-2xl">{g.icon}</span>
-                      </div>
-                      <h3 className="text-lg font-bold mb-1">{g.title}</h3>
-                      <p className="text-slate-500 text-sm">{g.desc}</p>
-                      {data.goal === g.id && (
-                        <span className="absolute top-4 right-4 material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                      )}
-                    </button>
-                  ))}
+                  {GOAL_IDS.map(g => {
+                    const gt = t.onboarding.goals[g.id]
+                    return (
+                      <button key={g.id} onClick={() => setData(d => ({ ...d, goal: g.id }))}
+                        className={'relative flex flex-col p-6 rounded-xl border-2 text-left transition-all ' +
+                          (data.goal === g.id ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-primary/50')}>
+                        <div className={'mb-4 w-12 h-12 rounded-lg flex items-center justify-center ' +
+                          (data.goal === g.id ? 'bg-primary text-white' : 'bg-primary/10 text-primary')}>
+                          <span className="material-symbols-outlined text-2xl">{g.icon}</span>
+                        </div>
+                        <h3 className="text-lg font-bold mb-1">{gt.title}</h3>
+                        <p className="text-slate-500 text-sm">{gt.desc}</p>
+                        {data.goal === g.id && (
+                          <span className="absolute top-4 right-4 material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               </section>
             )}
@@ -298,16 +298,18 @@ export default function OnboardingPage() {
             {step === 1 && (
               <section className="space-y-8">
                 <div className="text-center space-y-2">
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">What activities do you track?</h1>
-                  <p className="text-slate-500 dark:text-slate-400 text-lg">Select all that apply to your weekly routine.</p>
+                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{t.onboarding.activitiesTitle}</h1>
+                  <p className="text-slate-500 dark:text-slate-400 text-lg">{t.onboarding.activitiesSubtitle}</p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {ACTIVITIES.map(a => (
+                  {ACTIVITY_IDS.map(a => (
                     <button key={a.id} onClick={() => toggleActivity(a.id)}
                       className={'flex flex-col items-center gap-3 p-5 rounded-xl border-2 transition-all ' +
                         (data.activities.includes(a.id) ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-primary/50')}>
                       <span className={'material-symbols-outlined text-3xl ' + (data.activities.includes(a.id) ? 'text-primary' : 'text-slate-400')}>{a.icon}</span>
-                      <span className={'text-sm font-bold ' + (data.activities.includes(a.id) ? 'text-primary' : 'text-slate-600 dark:text-slate-400')}>{a.label}</span>
+                      <span className={'text-sm font-bold ' + (data.activities.includes(a.id) ? 'text-primary' : 'text-slate-600 dark:text-slate-400')}>
+                        {t.onboarding.activities[a.id]}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -318,21 +320,45 @@ export default function OnboardingPage() {
             {step === 2 && (
               <section className="space-y-8">
                 <div className="text-center space-y-2">
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">When do you usually work?</h1>
-                  <p className="text-slate-500 dark:text-slate-400 text-lg">We'll block these hours automatically in your planner.</p>
+                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{t.onboarding.workTitle}</h1>
+                  <p className="text-slate-500 dark:text-slate-400 text-lg">{t.onboarding.workSubtitle}</p>
                 </div>
-                <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <OnboardingTimePicker label="Work starts at" value={data.workStart} onChange={v => setData(d => ({ ...d, workStart: v }))} />
-                    <OnboardingTimePicker label="Work ends at"   value={data.workEnd}   onChange={v => setData(d => ({ ...d, workEnd: v }))} />
+
+                {/* "I don't work" skip toggle */}
+                <button
+                  onClick={() => setData(d => ({ ...d, noWork: !d.noWork }))}
+                  className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl border-2 transition-all text-left ${
+                    data.noWork
+                      ? 'border-primary bg-primary/5'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-primary/40'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${data.noWork ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                    <span className="material-symbols-outlined">work_off</span>
                   </div>
-                  <div className="p-4 bg-primary/5 rounded-xl border border-primary/20 flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary">tips_and_updates</span>
-                    <p className="text-sm text-primary font-medium">
-                      Focus hours: <strong>{fmtTime(data.workStart)}</strong> – <strong>{fmtTime(data.workEnd)}</strong>
-                    </p>
+                  <div className="flex-1">
+                    <p className={`font-bold ${data.noWork ? 'text-primary' : 'text-slate-700 dark:text-slate-200'}`}>{t.onboarding.noWork}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{t.onboarding.noWorkLabel}</p>
                   </div>
-                </div>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${data.noWork ? 'bg-primary border-primary' : 'border-slate-300 dark:border-slate-600'}`}>
+                    {data.noWork && <span className="material-symbols-outlined text-white" style={{ fontSize: 12 }}>check</span>}
+                  </div>
+                </button>
+
+                {!data.noWork && (
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <OnboardingTimePicker label={t.onboarding.workStarts} value={data.workStart} onChange={v => setData(d => ({ ...d, workStart: v }))} confirmLabel={t.onboarding.confirmTime} />
+                      <OnboardingTimePicker label={t.onboarding.workEnds}   value={data.workEnd}   onChange={v => setData(d => ({ ...d, workEnd: v }))} confirmLabel={t.onboarding.confirmTime} />
+                    </div>
+                    <div className="p-4 bg-primary/5 rounded-xl border border-primary/20 flex items-center gap-3">
+                      <span className="material-symbols-outlined text-primary">tips_and_updates</span>
+                      <p className="text-sm text-primary font-medium">
+                        {t.onboarding.focusHours} <strong>{fmtTime(data.workStart)}</strong> – <strong>{fmtTime(data.workEnd)}</strong>
+                      </p>
+                    </div>
+                  </div>
+                )}
               </section>
             )}
 
@@ -340,13 +366,13 @@ export default function OnboardingPage() {
             {step === 3 && (
               <section className="space-y-8">
                 <div className="text-center space-y-2">
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">What time do you wake up?</h1>
-                  <p className="text-slate-500 dark:text-slate-400 text-lg">We'll schedule morning routines around your wake-up time.</p>
+                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{t.onboarding.wakeTitle}</h1>
+                  <p className="text-slate-500 dark:text-slate-400 text-lg">{t.onboarding.wakeSubtitle}</p>
                 </div>
                 <div className="max-w-sm mx-auto bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800">
-                  <OnboardingTimePicker label="Wake up at" value={data.wakeUp} onChange={v => setData(d => ({ ...d, wakeUp: v }))} />
+                  <OnboardingTimePicker label={t.onboarding.wakeLabel} value={data.wakeUp} onChange={v => setData(d => ({ ...d, wakeUp: v }))} confirmLabel={t.onboarding.confirmTime} />
                   <p className="text-slate-500 text-center text-sm mt-4">
-                    Your morning routine starts at <span className="font-bold text-primary">{fmtTime(data.wakeUp)}</span>.
+                    {t.onboarding.morningStarts} <span className="font-bold text-primary">{fmtTime(data.wakeUp)}</span>.
                   </p>
                 </div>
               </section>
@@ -356,11 +382,11 @@ export default function OnboardingPage() {
             {step === 4 && (
               <section className="space-y-8">
                 <div className="text-center space-y-2">
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Which days are your rest days?</h1>
-                  <p className="text-slate-500 dark:text-slate-400 text-lg">We'll schedule lighter activities on these days.</p>
+                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{t.onboarding.daysOffTitle}</h1>
+                  <p className="text-slate-500 dark:text-slate-400 text-lg">{t.onboarding.daysOffSubtitle}</p>
                 </div>
                 <div className="flex flex-wrap gap-4 justify-center">
-                  {DAYS_FULL.map((day, i) => (
+                  {EN_DAYS_FULL.map((day, i) => (
                     <button key={day} onClick={() => toggleDay(day)}
                       className={'flex flex-col items-center gap-2 w-24 py-5 rounded-2xl border-2 transition-all ' +
                         (data.daysOff.includes(day) ? 'border-primary bg-primary/10 text-primary' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-primary/50')}>
@@ -376,16 +402,16 @@ export default function OnboardingPage() {
             {step === 5 && (
               <section className="space-y-8">
                 <div className="text-center space-y-2">
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Your WeekFlow is ready!</h1>
-                  <p className="text-slate-500 dark:text-slate-400 text-lg">Here's a summary of your personalized setup.</p>
+                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{t.onboarding.summaryTitle}</h1>
+                  <p className="text-slate-500 dark:text-slate-400 text-lg">{t.onboarding.summarySubtitle}</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
-                    { icon: 'flag',     label: 'Main Goal',   value: GOALS.find(g => g.id === data.goal)?.title || 'Not set' },
-                    { icon: 'schedule', label: 'Work Hours',  value: fmtTime(data.workStart) + ' – ' + fmtTime(data.workEnd) },
-                    { icon: 'alarm',    label: 'Wake Up',     value: fmtTime(data.wakeUp) },
-                    { icon: 'hotel',    label: 'Rest Days',   value: data.daysOff.length ? data.daysOff.map(d => d.slice(0, 3)).join(', ') : 'None' },
-                    { icon: 'category', label: 'Activities',  value: data.activities.length + ' selected' },
+                    { icon: 'flag',     label: t.onboarding.summaryGoal,       value: t.onboarding.goals[data.goal]?.title || '—' },
+                    { icon: 'schedule', label: t.onboarding.summaryHours,      value: data.noWork ? t.onboarding.noWorkLabel : fmtTime(data.workStart) + ' – ' + fmtTime(data.workEnd) },
+                    { icon: 'alarm',    label: t.onboarding.summaryWake,       value: fmtTime(data.wakeUp) },
+                    { icon: 'hotel',    label: t.onboarding.summaryDaysOff,    value: data.daysOff.length ? data.daysOff.map(d => d.slice(0, 3)).join(', ') : '—' },
+                    { icon: 'category', label: t.onboarding.summaryActivities, value: data.activities.length + ' ' + t.common.done.toLowerCase() },
                   ].map(item => (
                     <div key={item.label} className="flex items-center gap-4 p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
                       <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0">
@@ -403,23 +429,22 @@ export default function OnboardingPage() {
 
             {/* Navigation */}
             {(() => {
-              // Per-step validation — what's required to proceed
               const canProceed = (() => {
                 switch(step) {
-                  case 0: return data.goal !== ''                     // must pick a goal
-                  case 1: return data.activities.length >= 1         // must pick at least 1 activity
-                  case 2: return data.workStart && data.workEnd      // times always set
-                  case 3: return data.wakeUp                         // always set
-                  case 4: return true                                  // days off optional
-                  case 5: return true                                  // summary — always ok
+                  case 0: return data.goal !== ''
+                  case 1: return data.activities.length >= 1
+                  case 2: return true
+                  case 3: return data.wakeUp
+                  case 4: return true
+                  case 5: return true
                   default: return true
                 }
               })()
 
               const missingMsg = (() => {
                 switch(step) {
-                  case 0: return 'Please choose a goal to continue'
-                  case 1: return 'Please select at least one activity'
+                  case 0: return t.onboarding.chooseGoal
+                  case 1: return t.onboarding.selectActivity
                   default: return ''
                 }
               })()
@@ -436,7 +461,7 @@ export default function OnboardingPage() {
                     <button onClick={() => step > 0 ? setStep(s => s - 1) : navigate('login')}
                       className="flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                       <span className="material-symbols-outlined">arrow_back</span>
-                      {step === 0 ? 'Back' : 'Previous'}
+                      {step === 0 ? t.common.back : t.common.previous}
                     </button>
 
                     {step < STEPS.length - 1 ? (
@@ -448,15 +473,15 @@ export default function OnboardingPage() {
                             ? 'bg-primary text-white shadow-lg shadow-primary/25 hover:opacity-90 cursor-pointer'
                             : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
                         }`}>
-                        Continue
+                        {t.common.continue}
                         <span className="material-symbols-outlined">arrow_forward</span>
                       </button>
                     ) : (
                       <button onClick={finish} disabled={finishing}
                         className="flex items-center gap-2 px-8 py-3 rounded-xl bg-primary text-white font-bold shadow-lg shadow-primary/25 hover:opacity-90 transition-all disabled:opacity-70">
                         {finishing
-                          ? <><span className="animate-spin material-symbols-outlined">refresh</span> Setting up...</>
-                          : <>Let's go! <span className="material-symbols-outlined">rocket_launch</span></>
+                          ? <><span className="animate-spin material-symbols-outlined">refresh</span> {t.onboarding.settingUp}</>
+                          : <>{t.onboarding.letsGo} <span className="material-symbols-outlined">rocket_launch</span></>
                         }
                       </button>
                     )}

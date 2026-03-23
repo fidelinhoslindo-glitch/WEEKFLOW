@@ -1,4 +1,5 @@
 import { useApp } from '../context/AppContext'
+import { useLanguage } from '../context/LanguageContext'
 import DayProgressWidget from '../components/DayProgressWidget'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
@@ -712,6 +713,7 @@ export function AnalyticsPage() {
 
 export function SettingsPage() {
   const { user, setUser, darkMode, setDarkMode, navigate, logout, deleteAccount, clearAllTasks, pushToast, tasks } = useApp()
+  const { t, lang, setLang } = useLanguage()
 
   const dlCSV = () => {
     const header = 'Title,Category,Day,Time,Duration,Priority,Completed,Notes'
@@ -1001,16 +1003,36 @@ export function SettingsPage() {
             {activeTab === 'appearance' && (
               <div className="space-y-6">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-                  <h3 className="font-black text-base mb-5">Theme</h3>
+                  <h3 className="font-black text-base mb-5">{t.settings.appearance.darkMode.split(' ')[0]} Mode</h3>
                   <div className="grid grid-cols-2 gap-3">
-                    {[{val:false,label:'Light',icon:'light_mode'},{val:true,label:'Dark',icon:'dark_mode'}].map(t => (
-                      <button key={String(t.val)} onClick={() => setDarkMode(t.val)}
-                        className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 transition-all ${darkMode===t.val ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700 hover:border-primary/40'}`}>
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${darkMode===t.val ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
-                          <span className="material-symbols-outlined text-3xl">{t.icon}</span>
+                    {[{val:false,label:t.sidebar.lightMode,icon:'light_mode'},{val:true,label:t.sidebar.darkMode,icon:'dark_mode'}].map(opt => (
+                      <button key={String(opt.val)} onClick={() => setDarkMode(opt.val)}
+                        className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 transition-all ${darkMode===opt.val ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700 hover:border-primary/40'}`}>
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${darkMode===opt.val ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                          <span className="material-symbols-outlined text-3xl">{opt.icon}</span>
                         </div>
-                        <span className={`text-sm font-black ${darkMode===t.val ? 'text-primary' : 'text-slate-500'}`}>{t.label}</span>
-                        {darkMode===t.val && <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Active</span>}
+                        <span className={`text-sm font-black ${darkMode===opt.val ? 'text-primary' : 'text-slate-500'}`}>{opt.label}</span>
+                        {darkMode===opt.val && <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Active</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Language switcher */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+                  <h3 className="font-black text-base mb-1">{t.settings.appearance.language}</h3>
+                  <p className="text-slate-400 text-sm mb-5">{t.settings.appearance.languageDesc}</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { code: 'en', label: 'English',    flag: '🇺🇸' },
+                      { code: 'pt', label: 'Português',  flag: '🇧🇷' },
+                      { code: 'es', label: 'Español',    flag: '🇪🇸' },
+                    ].map(opt => (
+                      <button key={opt.code} onClick={() => setLang(opt.code)}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${lang===opt.code ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700 hover:border-primary/40'}`}>
+                        <span className="text-2xl">{opt.flag}</span>
+                        <span className={`text-xs font-black ${lang===opt.code ? 'text-primary' : 'text-slate-500'}`}>{opt.label}</span>
+                        {lang===opt.code && <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Active</span>}
                       </button>
                     ))}
                   </div>

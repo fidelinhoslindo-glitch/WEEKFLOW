@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext'
+import { useLanguage } from '../context/LanguageContext'
 
 export default function GlobalSearch() {
   const { searchQuery, setSearchQuery, setShowSearch, searchResults, navigate, setSelectedDay, categoryColors, setEditingTask } = useApp()
+  const { t } = useLanguage()
   const inputRef = useRef(null)
 
   // Local state for instant display; debounce propagation to context (avoids filtering on every keystroke).
@@ -49,7 +51,7 @@ export default function GlobalSearch() {
           <input
             ref={inputRef}
             className="flex-1 bg-transparent text-lg font-medium focus:outline-none placeholder:text-slate-400 text-slate-900 dark:text-slate-100"
-            placeholder="Search tasks, categories, days..."
+            placeholder={t.globalSearch.placeholder}
             value={localQuery}
             onChange={e => handleQueryChange(e.target.value)}
           />
@@ -68,22 +70,22 @@ export default function GlobalSearch() {
           {localQuery.trim().length <= 1 && (
             <div className="py-12 text-center">
               <span className="material-symbols-outlined text-4xl text-slate-300 mb-3 block">manage_search</span>
-              <p className="text-slate-400 font-medium">Type at least 2 characters to search</p>
-              <p className="text-slate-300 text-sm mt-1">Search by task name, category, day, or notes</p>
+              <p className="text-slate-400 font-medium">{t.globalSearch.typeMin}</p>
+              <p className="text-slate-300 text-sm mt-1">{t.globalSearch.searchBy}</p>
             </div>
           )}
 
           {localQuery.trim().length > 1 && searchResults.length === 0 && (
             <div className="py-12 text-center">
               <span className="material-symbols-outlined text-4xl text-slate-300 mb-3 block">search_off</span>
-              <p className="text-slate-400 font-medium">No tasks found for "{localQuery}"</p>
+              <p className="text-slate-400 font-medium">{t.globalSearch.noResults} "{localQuery}"</p>
             </div>
           )}
 
           {searchResults.length > 0 && (
             <>
               <div className="px-5 py-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{searchResults.length} {searchResults.length !== 1 ? t.globalSearch.resultsPlural : t.globalSearch.results}</span>
               </div>
               {searchResults.map(task => {
                 const c = categoryColors[task.category] || categoryColors.Other
@@ -125,10 +127,10 @@ export default function GlobalSearch() {
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
           <div className="flex items-center gap-4 text-xs text-slate-400">
-            <span className="flex items-center gap-1"><kbd className="bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded font-mono">↵</kbd> open</span>
+            <span className="flex items-center gap-1"><kbd className="bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded font-mono">↵</kbd> {t.globalSearch.open}</span>
             <span className="flex items-center gap-1"><kbd className="bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded font-mono">ESC</kbd> close</span>
           </div>
-          <span className="text-xs text-slate-400">WeekFlow Search</span>
+          <span className="text-xs text-slate-400">{t.globalSearch.weekflowSearch}</span>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../context/AppContext'
+import { useLanguage } from '../context/LanguageContext'
 import AnimatedPlanner from '../components/AnimatedPlanner'
 
 // ── Translations ──────────────────────────────────────────────────────────────
@@ -176,6 +177,7 @@ function FadeIn({ children, delay = 0, className = '' }) {
 
 export default function LandingPage() {
   const { navigate, darkMode, setDarkMode, isLoggedIn, onboardingData } = useApp()
+  const { t, lang, setLang } = useLanguage()
 
   const handleStart = () => {
     if (!isLoggedIn) return navigate('login')
@@ -183,10 +185,9 @@ export default function LandingPage() {
     return navigate(isDoneOnboarding ? 'dashboard' : 'onboarding')
   }
   const [openFaq, setOpenFaq] = useState(null)
-  const [lang, setLang] = useState('pt')
   const [mobileMenu, setMobileMenu] = useState(false)
   const [pricingBilling, setPricingBilling] = useState('monthly')
-  const t = T[lang]
+  const tl = t.landing
 
   const LANGS = [{ code:'pt', label:'PT' }, { code:'en', label:'EN' }, { code:'es', label:'ES' }]
 
@@ -235,15 +236,15 @@ export default function LandingPage() {
                 <span className="material-symbols-outlined text-sm text-primary">download</span>Desktop
               </button>
               {!isLoggedIn && (
-                <button onClick={() => navigate('login')} className="hidden md:block text-sm font-semibold px-4 py-2 hover:bg-primary/5 rounded-xl transition-all">{t.login}</button>
+                <button onClick={() => navigate('login')} className="hidden md:block text-sm font-semibold px-4 py-2 hover:bg-primary/5 rounded-xl transition-all">{tl.login}</button>
               )}
               {/* CTA - shorter text on mobile */}
               {isLoggedIn ? (
                 <button onClick={() => navigate('dashboard')} className="bg-primary text-white text-sm font-bold px-3 sm:px-5 py-2 rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-all flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-sm">dashboard</span><span className="hidden sm:inline">{t.goToDashboard}</span><span className="sm:hidden">App</span>
+                  <span className="material-symbols-outlined text-sm">dashboard</span><span className="hidden sm:inline">{tl.goToDashboard}</span><span className="sm:hidden">App</span>
                 </button>
               ) : (
-                <button onClick={handleStart} className="bg-primary text-white text-sm font-bold px-3 sm:px-5 py-2 rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-all"><span className="hidden sm:inline">{t.getStarted}</span><span className="sm:hidden">{lang==='pt'?'Entrar':lang==='es'?'Entrar':'Start'}</span></button>
+                <button onClick={handleStart} className="bg-primary text-white text-sm font-bold px-3 sm:px-5 py-2 rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-all"><span className="hidden sm:inline">{tl.getStarted}</span><span className="sm:hidden">{tl.getStarted}</span></button>
               )}
             </div>
           </div>
@@ -267,15 +268,15 @@ export default function LandingPage() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"/>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"/>
             </span>
-            {t.badge}
+            {tl.badge}
           </div>
 
           {/* Headline with typewriter feel */}
           <h1 className="text-3xl sm:text-5xl md:text-7xl font-black leading-[1.08] tracking-tight mb-6"
             style={{animation:'fadeUp 0.7s ease 0.1s both'}}>
-            {t.heroTitle1}<br/>
+            {tl.heroTitle1}<br/>
             <span className="text-primary relative">
-              {t.heroTitle2}
+              {tl.heroTitle2}
               <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 8" fill="none" preserveAspectRatio="none">
                 <path d="M0 6 Q75 2 150 6 Q225 10 300 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-primary opacity-40"/>
               </svg>
@@ -284,7 +285,7 @@ export default function LandingPage() {
 
           <p className="max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-slate-500 dark:text-slate-400 mb-8 sm:mb-10 leading-relaxed px-2"
             style={{animation:'fadeUp 0.7s ease 0.2s both'}}>
-            {t.heroSub}
+            {tl.heroSub}
           </p>
 
           {/* CTAs */}
@@ -293,7 +294,7 @@ export default function LandingPage() {
             <button onClick={isLoggedIn ? () => navigate('dashboard') : handleStart}
               className="w-full sm:w-auto group bg-primary text-white text-base font-bold px-8 py-4 rounded-xl shadow-xl shadow-primary/30 hover:shadow-primary/50 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2">
               <span className="material-symbols-outlined text-sm group-hover:rotate-12 transition-transform">{isLoggedIn ? 'dashboard' : 'bolt'}</span>
-              {isLoggedIn ? t.goToDashboard : t.cta1}
+              {isLoggedIn ? tl.goToDashboard : tl.cta1}
             </button>
           </div>
 
@@ -320,11 +321,11 @@ export default function LandingPage() {
       <section id="features" className="py-24 bg-slate-50 dark:bg-slate-900/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeIn className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black mb-4">{t.featuresTitle}</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-lg">{t.featuresub}</p>
+            <h2 className="text-3xl md:text-5xl font-black mb-4">{tl.featuresTitle}</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-lg">{tl.featuresub}</p>
           </FadeIn>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {t.features.map((f, i) => (
+            {tl.features.map((f, i) => (
               <FadeIn key={i} delay={i*80}>
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all group">
                   <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
@@ -343,8 +344,8 @@ export default function LandingPage() {
       <section id="pricing" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeIn className="text-center mb-10">
-            <h2 className="text-3xl md:text-5xl font-black mb-4">{t.pricingTitle}</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-lg">{t.pricingSub}</p>
+            <h2 className="text-3xl md:text-5xl font-black mb-4">{tl.pricingTitle}</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-lg">{tl.pricingSub}</p>
           </FadeIn>
 
           {/* Billing toggle */}
@@ -365,11 +366,11 @@ export default function LandingPage() {
             <FadeIn delay={0}>
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 h-full flex flex-col">
                 <div className="inline-flex items-center gap-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-black px-3 py-1 rounded-full mb-4 self-start">
-                  {t.freeForever}
+                  {tl.freeForever}
                 </div>
-                <p className="text-sm font-black uppercase tracking-wider text-slate-400 mb-2">{t.free}</p>
+                <p className="text-sm font-black uppercase tracking-wider text-slate-400 mb-2">{tl.free}</p>
                 <p className="text-4xl sm:text-5xl font-black mb-1">{lang === 'pt' ? 'R$0' : '$0'}</p>
-                <p className="text-slate-400 text-sm mb-6">{t.noCreditCard}</p>
+                <p className="text-slate-400 text-sm mb-6">{tl.noCreditCard}</p>
                 <ul className="space-y-2.5 flex-1 mb-8">
                   {(lang === 'pt' ? [
                     '15 tarefas simultâneas',
@@ -400,7 +401,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <button onClick={() => navigate('login')} className="w-full py-3 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary/5 transition-all">
-                  {t.startFree}
+                  {tl.startFree}
                 </button>
               </div>
             </FadeIn>
@@ -408,11 +409,11 @@ export default function LandingPage() {
             {/* Pro — highlighted */}
             <FadeIn delay={100}>
               <div className="bg-primary rounded-2xl p-6 sm:p-8 relative overflow-hidden h-full flex flex-col shadow-2xl shadow-primary/30 border-2 border-primary">
-                <div className="absolute top-4 right-4 bg-white/20 text-white text-xs font-black px-3 py-1 rounded-full">{t.mostPop}</div>
-                <p className="text-sm font-black uppercase tracking-wider text-white/70 mb-2">{t.pro}</p>
+                <div className="absolute top-4 right-4 bg-white/20 text-white text-xs font-black px-3 py-1 rounded-full">{tl.mostPop}</div>
+                <p className="text-sm font-black uppercase tracking-wider text-white/70 mb-2">{tl.pro}</p>
                 <p className="text-4xl sm:text-5xl font-black text-white mb-1">
                   {lang === 'pt' ? (pricingBilling === 'yearly' ? 'R$152' : 'R$19') : (pricingBilling === 'yearly' ? '$64' : '$8')}
-                  <span className="text-lg font-medium text-white/70">{pricingBilling === 'yearly' ? t.yearly : t.monthly}</span>
+                  <span className="text-lg font-medium text-white/70">{pricingBilling === 'yearly' ? tl.yearly : tl.monthly}</span>
                 </p>
                 {pricingBilling === 'yearly'
                   ? <p className="text-emerald-300 text-xs font-bold mb-6">{lang === 'pt' ? 'Economize R$76' : lang === 'es' ? 'Ahorra $32' : 'Save $32'}</p>
@@ -463,7 +464,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <button onClick={() => { localStorage.setItem('wf_selected_plan','pro'); navigate('checkout') }} className="w-full py-3 rounded-xl bg-white text-primary font-bold hover:bg-white/90 transition-all">
-                  {t.startPro} →
+                  {tl.startPro} →
                 </button>
               </div>
             </FadeIn>
@@ -471,11 +472,11 @@ export default function LandingPage() {
             {/* Business */}
             <FadeIn delay={200}>
               <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-purple-300 dark:border-purple-700 p-6 sm:p-8 h-full flex flex-col relative overflow-hidden">
-                <div className="absolute top-4 right-4 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-black px-3 py-1 rounded-full">{t.forTeams}</div>
-                <p className="text-sm font-black uppercase tracking-wider text-purple-500 mb-2">{t.business}</p>
+                <div className="absolute top-4 right-4 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-black px-3 py-1 rounded-full">{tl.forTeams}</div>
+                <p className="text-sm font-black uppercase tracking-wider text-purple-500 mb-2">{tl.business}</p>
                 <p className="text-4xl sm:text-5xl font-black text-purple-600 dark:text-purple-400 mb-1">
                   {lang === 'pt' ? (pricingBilling === 'yearly' ? 'R$392' : 'R$49') : (pricingBilling === 'yearly' ? '$152' : '$19')}
-                  <span className="text-lg font-medium text-purple-400 dark:text-purple-500">{pricingBilling === 'yearly' ? t.yearly : t.monthly}</span>
+                  <span className="text-lg font-medium text-purple-400 dark:text-purple-500">{pricingBilling === 'yearly' ? tl.yearly : tl.monthly}</span>
                 </p>
                 {pricingBilling === 'yearly'
                   ? <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold mb-6">{lang === 'pt' ? 'Economize R$196' : lang === 'es' ? 'Ahorra $76' : 'Save $76'}</p>
@@ -517,7 +518,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <button onClick={() => { localStorage.setItem('wf_selected_plan','business'); navigate('checkout') }} className="w-full py-3 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/25">
-                  {t.startBusiness} →
+                  {tl.startBusiness} →
                 </button>
               </div>
             </FadeIn>
@@ -529,10 +530,10 @@ export default function LandingPage() {
       <section id="faq" className="py-24 bg-slate-50 dark:bg-slate-900/30">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeIn className="text-center mb-12">
-            <h2 className="text-3xl md:text-5xl font-black">{t.faqTitle}</h2>
+            <h2 className="text-3xl md:text-5xl font-black">{tl.faqTitle}</h2>
           </FadeIn>
           <div className="space-y-3">
-            {t.faqs.map((faq, i) => (
+            {tl.faqs.map((faq, i) => (
               <FadeIn key={i} delay={i*60}>
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                   <button className="w-full flex items-center justify-between px-6 py-5 text-left" onClick={() => setOpenFaq(openFaq===i?null:i)}>
@@ -562,7 +563,7 @@ export default function LandingPage() {
             </h2>
             <button onClick={isLoggedIn ? () => navigate('dashboard') : handleStart}
               className="bg-white text-primary text-lg font-black px-10 py-5 rounded-2xl shadow-2xl hover:scale-105 transition-all">
-              {isLoggedIn ? t.goToDashboard : t.cta1} →
+              {isLoggedIn ? tl.goToDashboard : tl.cta1} →
             </button>
           </div>
         </section>
@@ -581,7 +582,7 @@ export default function LandingPage() {
               </svg>
             <span className="font-black text-lg">WeekFlow</span>
           </div>
-          <p className="text-slate-400 text-sm">{t.footerTagline}</p>
+          <p className="text-slate-400 text-sm">{tl.footerTagline}</p>
           <p className="text-slate-300 dark:text-slate-600 text-xs mt-4">© 2026 WeekFlow. All rights reserved.</p>
         </div>
       </footer>
