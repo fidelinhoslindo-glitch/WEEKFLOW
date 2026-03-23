@@ -7,9 +7,168 @@ import { getHoliday, resolveHolidayConflicts, generateSmartSuggestions, detectPa
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 const DOW_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const CATEGORIES = ['Work','Gym','Study','Rest','Other']
+const PRIORITIES = ['low','medium','high']
+const WEEK_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 
-function statusColor(status) {
-  return { online:'bg-emerald-500', away:'bg-amber-400', busy:'bg-red-500', offline:'bg-slate-400' }[status] || 'bg-slate-400'
+// Modal for adding a task to a specific day from the calendar
+function CalendarAddTaskModal({ date, month, year, onClose, onAdd }) {
+  const dow = new Date(year, month, date).getDay()
+  const dayName = DOW_FULL[dow]
+
+  const [form, setForm] = useState({
+    title: '',
+    category: 'Work',
+    time: '09:00',
+    duration: 60,
+    priority: 'medium',
+    notes: '',
+    repeat: 'none', // none | weekly | daily | weekdays | weekends
+    color: '',
+  })
+  const [saving, setSaving] = useState(false)
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleAdd = () => {
+    if (!form.title.trim()) return
+    setSaving(true)
+
+    const base = {
+      title: form.title.trim(),
+      category: form.category,
+      time: form.time,
+      duration: Number(form.duration),
+      priority: form.priority,
+      notes: form.notes,
+      color: form.color,
+      completed: false,
+    }
+
+    if (form.repeat === 'none') {
+      // Single day task
+      onAdd([{ ...base, day: dayName, recurring: false }])
+    } else if (form.repeat === 'weekly') {
+      // Recurring on same weekday every week
+      onAdd([{ ...base, day: dayName, recurring: true }])
+    } else if (form.repeat === 'daily') {
+      // All 7 days
+      onAdd(WEEK_DAYS.map(d => ({ ...base, day: d, recurring: true })))
+    } else if (form.repeat === 'weekdays') {
+      onAdd(['Monday','Tuesday','Wednesday','Thursday','Friday'].map(d => ({ ...base, day: d, recurring: true })))
+    } else if (form.repeat === 'weekends') {
+      onAdd(['Saturday','Sunday'].map(d => ({ ...base, day: d, recurring: true })))
+    }
+
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h2 className="font-black text-lg">Add Task</h2>
+            <p className="text-xs text-slate-400">{MONTHS[month]} {date}, {year} · {dayName}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors">
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+          {/* Title */}
+          <div>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Task name</label>
+            <input
+              autoFocus
+              value={form.title}
+              onChange={e => set('title', e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              placeholder="What do you need to do?"
+              className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+            />
+          </div>
+
+          {/* Category + Priority row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Category</label>
+              <div className="flex flex-wrap gap-1.5">
+                {CATEGORIES.map(c => (
+                  <button key={c} onClick={() => set('category', c)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${form.category===c ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'}`}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Priority</label>
+              <div className="flex gap-1.5">
+                {PRIORITIES.map(p => (
+                  <button key={p} onClick={() => set('priority', p)}
+                    className={`flex-1 py-1 rounded-lg text-xs font-bold capitalize transition-all ${form.priority===p ? (p==='high'?'bg-red-500 text-white':p==='medium'?'bg-amber-400 text-white':'bg-slate-400 text-white') : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'}`}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Time + Duration */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Time</label>
+              <input type="time" value={form.time} onChange={e => set('time', e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Duration (min)</label>
+              <input type="number" value={form.duration} onChange={e => set('duration', e.target.value)} min={5} max={480} step={5}
+                className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
+            </div>
+          </div>
+
+          {/* Repeat */}
+          <div>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Repeat</label>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { val: 'none',     label: 'Once' },
+                { val: 'weekly',   label: `Every ${dayName.slice(0,3)}` },
+                { val: 'weekdays', label: 'Weekdays' },
+                { val: 'weekends', label: 'Weekends' },
+                { val: 'daily',    label: 'Every day' },
+              ].map(opt => (
+                <button key={opt.val} onClick={() => set('repeat', opt.val)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${form.repeat===opt.val ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'}`}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Notes (optional)</label>
+            <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} placeholder="Any extra details..."
+              className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-none" />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-bold text-slate-500 hover:bg-slate-200 transition-colors">Cancel</button>
+          <button onClick={handleAdd} disabled={!form.title.trim()}
+            className="flex-1 py-3 rounded-xl bg-primary text-white text-sm font-bold hover:opacity-90 disabled:opacity-40 transition-all shadow-lg shadow-primary/30">
+            {form.repeat !== 'none' ? 'Add recurring' : 'Add task'} ✓
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function SmartCalendarPage() {
@@ -17,6 +176,7 @@ export default function SmartCalendarPage() {
 
   const [month, setMonth] = useState(new Date())
   const [selected, setSelected] = useState(null)
+  const [calendarModal, setCalendarModal] = useState(null) // { date, month, year }
   const [showSuggestions, setShowSuggestions] = useState(true)
   const [dismissedSuggestions, setDismissedSuggestions] = useState(() => {
     try { return JSON.parse(localStorage.getItem('wf_dismissed_suggestions') || '[]') } catch { return [] }
@@ -93,6 +253,7 @@ export default function SmartCalendarPage() {
   const isToday = (d) => d === today.getDate() && mon === today.getMonth() && year === today.getFullYear()
 
   return (
+    <>
     <div className="flex min-h-screen bg-bg-light dark:bg-bg-dark">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
@@ -264,7 +425,7 @@ export default function SmartCalendarPage() {
                           </p>
                         )}
                       </div>
-                      <button onClick={() => setShowAddTask(true)} className="p-1.5 bg-primary text-white rounded-lg hover:opacity-90">
+                      <button onClick={() => setCalendarModal({ date: selected, month: mon, year })} className="p-1.5 bg-primary text-white rounded-lg hover:opacity-90">
                         <span className="material-symbols-outlined text-sm">add</span>
                       </button>
                     </div>
@@ -347,5 +508,18 @@ export default function SmartCalendarPage() {
         </main>
       </div>
     </div>
+    {calendarModal && (
+      <CalendarAddTaskModal
+        date={calendarModal.date}
+        month={calendarModal.month}
+        year={calendarModal.year}
+        onClose={() => setCalendarModal(null)}
+        onAdd={(newTasks) => {
+          newTasks.forEach(task => addTask(task))
+          pushToast(`✅ ${newTasks.length > 1 ? `${newTasks.length} tasks added!` : `"${newTasks[0].title}" added!`}`, 'success')
+        }}
+      />
+    )}
+    </>
   )
 }

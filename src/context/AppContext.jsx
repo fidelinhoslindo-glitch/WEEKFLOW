@@ -40,7 +40,7 @@ function genOnboardingTasks(data) {
   const list = []
   let counter = 200000
   const uid = () => { counter++; return Date.now() * 10000 + counter }
-  const { goal='', activities=[], workStart='09:00', workEnd='17:00', wakeUp='07:00', daysOff=['Saturday','Sunday'] } = data
+  const { goal='', activities=[], workStart='09:00', workEnd='17:00', wakeUp='07:00', daysOff=['Saturday','Sunday'], noWork=false } = data
   const workDays = WEEK_DAYS.filter(d => !daysOff.includes(d)).slice(0,5)
   const add = (t) => list.push({ completed:false, priority:'medium', notes:'✨ Created from your onboarding answers', recurring:true, color:'', ...t, id:uid() })
 
@@ -56,8 +56,8 @@ function genOnboardingTasks(data) {
       add({ title:'Workout 💪', category:'Gym', day, time:'07:00', duration:60, priority:'medium' }))
   }
 
-  // Work blocks — every work day
-  if (activities.includes('work') || goal==='productivity' || goal==='organized')
+  // Work blocks — only if user works (not skipped) AND explicitly selected work activity or work-focused goal
+  if (!noWork && workStart && activities.includes('work'))
     workDays.forEach(day =>
       add({ title:'Deep Work Block 💼', category:'Work', day, time:workStart, duration:90, priority:'high' }))
 
