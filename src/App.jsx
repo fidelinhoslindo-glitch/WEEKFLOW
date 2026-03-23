@@ -186,13 +186,13 @@ function AppInner() {
       <ToastContainer />
       <KeyboardHint />
 
-      {/* Support Chat floating button */}
-      {isLoggedIn && showBottomNav && (
+      {/* Support Chat — only on FAQ page */}
+      {isLoggedIn && page === 'faq' && (
         <>
           {showSupport && <SupportChat onClose={() => setShowSupport(false)} />}
           <button
             onClick={() => setShowSupport(s => !s)}
-            className="fixed bottom-24 right-4 sm:bottom-6 sm:right-20 z-40 w-12 h-12 rounded-full bg-gradient-to-br from-primary to-purple-600 text-white shadow-2xl shadow-primary/40 flex items-center justify-center hover:scale-110 transition-all active:scale-95"
+            className="fixed bottom-24 right-4 sm:bottom-6 sm:right-6 z-40 w-12 h-12 rounded-full bg-gradient-to-br from-primary to-purple-600 text-white shadow-2xl shadow-primary/40 flex items-center justify-center hover:scale-110 transition-all active:scale-95"
             aria-label="Open support chat"
           >
             <span className="material-symbols-outlined" style={{ fontVariationSettings: showSupport ? "'FILL' 1" : "'FILL' 0" }}>

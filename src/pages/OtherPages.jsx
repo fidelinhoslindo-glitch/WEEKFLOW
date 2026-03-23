@@ -762,144 +762,133 @@ export function SettingsPage() {
     <div className="flex min-h-screen bg-bg-light dark:bg-bg-dark">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header title="Profile & Settings" />
+        <Header title={t.settings.title || 'Settings'} />
 
         <div className="flex-1 flex flex-col lg:flex-row">
-          {/* ── Sidebar tabs — horizontal on mobile, vertical on desktop ── */}
-          <aside className="lg:w-56 shrink-0 bg-white dark:bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800">
-            {/* Mobile: horizontal scroll tabs */}
-            <div className="lg:hidden flex overflow-x-auto scrollbar-hide px-4 py-2 gap-1">
-              {TABS.map(t => (
-                <button key={t.id} onClick={() => setActiveTab(t.id)}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold shrink-0 transition-all ${activeTab===t.id ? t.id==='danger' ? 'bg-red-500 text-white' : 'bg-primary text-white shadow' : t.id==='danger' ? 'text-red-400' : 'text-slate-500'}`}>
-                  <span className="material-symbols-outlined text-sm">{t.icon}</span>
-                  {t.label}
+          {/* ── Sidebar nav ── */}
+          <aside className="lg:w-60 shrink-0 bg-white dark:bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800">
+            {/* Mobile: horizontal chips */}
+            <div className="lg:hidden flex overflow-x-auto scrollbar-hide px-3 py-3 gap-2">
+              {TABS.map(tab => (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold shrink-0 transition-all ${activeTab===tab.id ? tab.id==='danger' ? 'bg-red-500 text-white' : 'bg-primary text-white shadow-md shadow-primary/25' : tab.id==='danger' ? 'text-red-400 bg-red-50 dark:bg-red-900/20' : 'text-slate-500 bg-slate-100 dark:bg-slate-800'}`}>
+                  <span className="material-symbols-outlined text-sm">{tab.icon}</span>
+                  {tab.label}
                 </button>
               ))}
             </div>
-            {/* Desktop: vertical list */}
-            <nav className="hidden lg:flex flex-col gap-1 p-3 pt-6">
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-3 mb-2">Settings</p>
-              {TABS.map(t => (
-                <button key={t.id} onClick={() => setActiveTab(t.id)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${activeTab===t.id ? t.id==='danger' ? 'bg-red-500 text-white' : 'bg-primary text-white shadow-lg shadow-primary/20' : t.id==='danger' ? 'text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                  <span className="material-symbols-outlined text-sm">{t.icon}</span>
-                  <span className="text-sm font-medium">{t.label}</span>
+            {/* Desktop: vertical */}
+            <nav className="hidden lg:flex flex-col p-3 pt-5 gap-0.5">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-3 mb-3">Settings</p>
+              {TABS.map(tab => (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                  className={`group flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-left ${activeTab===tab.id ? tab.id==='danger' ? 'bg-red-500 text-white shadow-lg' : 'bg-primary text-white shadow-lg shadow-primary/20' : tab.id==='danger' ? 'text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                  <span className={`material-symbols-outlined text-base transition-all ${activeTab===tab.id ? '' : 'group-hover:scale-110'}`}>{tab.icon}</span>
+                  <span className="text-sm font-semibold">{tab.label}</span>
+                  {activeTab===tab.id && <span className="material-symbols-outlined text-sm ml-auto opacity-60">chevron_right</span>}
                 </button>
               ))}
-              <button onClick={logout}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all mt-4">
-                <span className="material-symbols-outlined text-sm">logout</span>
-                <span className="text-sm font-medium">Sign Out</span>
-              </button>
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button onClick={logout}
+                  className="group flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all w-full">
+                  <span className="material-symbols-outlined text-base group-hover:scale-110 transition-transform">logout</span>
+                  <span className="text-sm font-semibold">Sign Out</span>
+                </button>
+              </div>
             </nav>
           </aside>
 
           {/* ── Main content ── */}
-          <main className="flex-1 p-4 lg:p-8 overflow-y-auto space-y-6 max-w-2xl">
+          <main className="flex-1 p-4 lg:p-8 overflow-y-auto space-y-5 max-w-2xl">
 
-            {/* PROFILE TAB */}
+            {/* ─── PROFILE TAB ─── */}
             {activeTab === 'profile' && (
               <>
-                {/* Hero card */}
-                <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
-                  {/* Gradient banner */}
-                  <div className="h-28 lg:h-36 relative" style={{
-                    background: `linear-gradient(135deg, ${avatarColor}cc 0%, ${avatarColor}44 50%, transparent 100%)`
-                  }}>
-                    <div className="absolute inset-0" style={{
-                      backgroundImage: `radial-gradient(circle at 20% 50%, ${avatarColor}55 0%, transparent 60%), radial-gradient(circle at 80% 20%, #ffffff11 0%, transparent 50%)`
-                    }} />
-                    {/* Edit avatar button — top right */}
+                {/* Profile hero */}
+                <div className="rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
+                  {/* Banner */}
+                  <div className="h-24 relative" style={{ background: `linear-gradient(135deg, ${avatarColor}dd 0%, ${avatarColor}66 60%, ${avatarColor}22 100%)` }}>
+                    <div className="absolute inset-0" style={{ backgroundImage: `radial-gradient(circle at 75% 50%, rgba(255,255,255,0.12) 0%, transparent 60%)` }} />
                     <button onClick={() => setEditingAvatar(!editingAvatar)}
-                      className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/20 hover:bg-black/30 backdrop-blur-sm text-white rounded-xl text-xs font-semibold transition-all">
+                      className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/25 hover:bg-black/40 backdrop-blur-sm text-white rounded-xl text-xs font-bold transition-all">
                       <span className="material-symbols-outlined text-xs">palette</span>
                       Customize
                     </button>
                   </div>
 
-                  {/* Avatar + info */}
-                  <div className="bg-white dark:bg-slate-900 px-6 pb-6">
-                    <div className="flex items-end gap-4 -mt-8 mb-4">
+                  <div className="px-5 pb-5">
+                    {/* Avatar row */}
+                    <div className="flex items-end gap-4 -mt-9 mb-5">
                       <div className="relative shrink-0">
-                        <div className="p-1 rounded-2xl bg-white dark:bg-slate-900 shadow-xl">
+                        <div className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 shadow-xl">
                           {user.avatarImg ? (
-                            <img src={user.avatarImg} alt="Avatar" className="w-20 h-20 lg:w-24 lg:h-24 rounded-xl object-cover" />
+                            <img src={user.avatarImg} alt="Avatar" className="w-16 h-16 rounded-xl object-cover" />
                           ) : (
-                            <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-xl flex items-center justify-center text-white text-4xl font-black"
+                            <div className="w-16 h-16 rounded-xl flex items-center justify-center text-white text-2xl font-black"
                               style={{ backgroundColor: avatarColor }}>
                               {user.name.charAt(0).toUpperCase()}
                             </div>
                           )}
                         </div>
-                        <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-400 border-2 border-white dark:border-slate-900 flex items-center justify-center">
-                          <span className="w-2 h-2 rounded-full bg-white" />
-                        </span>
+                        <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-emerald-400 border-2 border-white dark:border-slate-900" />
                       </div>
-                      <div className="pb-1 flex-1 min-w-0">
+                      <div className="pb-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h2 className="text-xl font-black truncate">{user.name}</h2>
+                          <h2 className="text-lg font-black">{user.name}</h2>
                           <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full"
                             style={{ backgroundColor: avatarColor + '22', color: avatarColor }}>
                             <span className="material-symbols-outlined text-[10px]" style={{fontVariationSettings:"'FILL' 1"}}>verified</span>
                             {user.plan}
                           </span>
                         </div>
-                        <p className="text-slate-400 text-xs mt-0.5 truncate">{user.email}</p>
+                        <p className="text-slate-400 text-xs">{user.email}</p>
                       </div>
                     </div>
 
-                    {/* Avatar editor inline */}
+                    {/* Avatar editor */}
                     {editingAvatar && (
-                      <div className="mb-5 p-4 bg-slate-50 dark:bg-slate-800/70 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-wider">Customize Avatar</p>
+                      <div className="mb-5 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Customize</p>
                         <div>
-                          <p className="text-xs text-slate-500 mb-2 font-medium">Avatar color</p>
+                          <p className="text-xs text-slate-500 mb-2.5 font-semibold">Color</p>
                           <div className="flex gap-2 flex-wrap">
                             {AVATAR_COLORS.map(col => (
                               <button key={col} onClick={() => { setAvatarColor(col); setUser(prev => ({...prev, avatarColor: col, avatarImg: null})); setEditingAvatar(false) }}
-                                className={`w-9 h-9 rounded-xl transition-all hover:scale-110 ${avatarColor===col ? 'ring-2 ring-offset-2 ring-primary scale-110' : ''}`}
+                                className={`w-8 h-8 rounded-xl transition-all hover:scale-110 ${avatarColor===col ? 'ring-2 ring-offset-2 ring-primary scale-110' : ''}`}
                                 style={{ backgroundColor: col }} />
                             ))}
                           </div>
                         </div>
                         <div>
-                          <p className="text-xs text-slate-500 mb-2 font-medium">Upload photo</p>
-                          <label className="flex items-center gap-2 cursor-pointer px-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl hover:border-primary transition-colors w-fit">
+                          <p className="text-xs text-slate-500 mb-2 font-semibold">Photo</p>
+                          <label className="inline-flex items-center gap-2 cursor-pointer px-4 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl hover:border-primary transition-colors text-sm font-semibold text-slate-500">
                             <span className="material-symbols-outlined text-primary text-sm">upload</span>
-                            <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">Choose image</span>
+                            Upload image
                             <input type="file" accept="image/*" className="hidden" onChange={e => {
-                              const file = e.target.files?.[0]
-                              if (!file) return
+                              const file = e.target.files?.[0]; if (!file) return
                               const reader = new FileReader()
-                              reader.onload = ev => {
-                                setUser(prev => ({ ...prev, avatarImg: ev.target.result }))
-                                setEditingAvatar(false)
-                                pushToast('Avatar updated!', 'success')
-                              }
+                              reader.onload = ev => { setUser(prev => ({ ...prev, avatarImg: ev.target.result })); setEditingAvatar(false); pushToast('Avatar updated!', 'success') }
                               reader.readAsDataURL(file)
                             }} />
                           </label>
+                          {user.avatarImg && (
+                            <button onClick={() => { setUser(prev => ({...prev, avatarImg: null})); pushToast('Photo removed','info') }}
+                              className="ml-3 text-xs text-red-400 hover:text-red-600 font-semibold">Remove photo</button>
+                          )}
                         </div>
-                        {user.avatarImg && (
-                          <button onClick={() => { setUser(prev => ({...prev, avatarImg: null})); pushToast('Photo removed','info') }}
-                            className="text-xs text-red-400 hover:text-red-600 font-semibold">
-                            Remove photo
-                          </button>
-                        )}
                       </div>
                     )}
 
-                    {/* Stats row */}
+                    {/* Stats */}
                     <div className="grid grid-cols-3 gap-3">
                       {[
-                        { label: 'Total Tasks',    value: tasks.length, icon: 'task_alt'    },
-                        { label: 'Completed',      value: doneTasks,    icon: 'check_circle' },
-                        { label: 'Hours Planned',  value: totalHours,   icon: 'schedule'     },
+                        { label: 'Tasks',     value: tasks.length, icon: 'task_alt',    color: 'text-primary' },
+                        { label: 'Done',      value: doneTasks,    icon: 'check_circle', color: 'text-emerald-500' },
+                        { label: 'Hours',     value: totalHours,   icon: 'schedule',    color: 'text-purple-500' },
                       ].map(s => (
-                        <div key={s.label} className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 text-center group hover:bg-primary/5 transition-colors">
-                          <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 group-hover:text-primary transition-colors text-lg">{s.icon}</span>
-                          <p className="text-2xl font-black mt-1" style={{ color: avatarColor }}>{s.value}</p>
+                        <div key={s.label} className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 text-center">
+                          <span className={`material-symbols-outlined text-xl ${s.color}`} style={{fontVariationSettings:"'FILL' 1"}}>{s.icon}</span>
+                          <p className={`text-2xl font-black mt-1 ${s.color}`}>{s.value}</p>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{s.label}</p>
                         </div>
                       ))}
@@ -908,25 +897,23 @@ export function SettingsPage() {
                 </div>
 
                 {/* Edit form */}
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-5">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm text-slate-400">manage_accounts</span>
-                    <h3 className="font-black text-sm uppercase tracking-wider text-slate-400">Edit Profile</h3>
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+                  <h3 className="font-black text-sm text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <span className="material-symbols-outlined text-sm">manage_accounts</span>
+                    Edit Profile
+                  </h3>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 mb-1.5">Full Name</label>
+                    <input className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                      value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
                   </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1.5">Full Name</label>
-                      <input className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                        value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1.5">Email</label>
-                      <input type="email" className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                        value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
-                    </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 mb-1.5">Email</label>
+                    <input type="email" className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                      value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
                   </div>
                   <button onClick={saveProfile}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${saved ? 'bg-emerald-500 text-white' : 'bg-primary text-white hover:opacity-90 shadow-lg shadow-primary/25'}`}>
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${saved ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25' : 'bg-primary text-white hover:opacity-90 shadow-lg shadow-primary/25'}`}>
                     <span className="material-symbols-outlined text-sm">{saved ? 'check' : 'save'}</span>
                     {saved ? 'Saved!' : 'Save Changes'}
                   </button>
@@ -934,35 +921,32 @@ export function SettingsPage() {
 
                 {/* Subscription */}
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="material-symbols-outlined text-sm text-slate-400">workspace_premium</span>
-                    <h3 className="font-black text-sm uppercase tracking-wider text-slate-400">Subscription</h3>
-                  </div>
+                  <h3 className="font-black text-sm text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-4">
+                    <span className="material-symbols-outlined text-sm">workspace_premium</span>
+                    Subscription
+                  </h3>
                   <div className="flex items-center justify-between p-4 rounded-2xl border-2"
                     style={{ borderColor: avatarColor + '33', backgroundColor: avatarColor + '08' }}>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-black shrink-0"
-                        style={{ backgroundColor: avatarColor }}>
-                        ✦
-                      </div>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-base shrink-0"
+                        style={{ backgroundColor: avatarColor }}>✦</div>
                       <div>
                         <p className="font-black text-sm" style={{ color: avatarColor }}>{user.plan} Plan</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Billed monthly · $9/mo</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{user.plan === 'Free' ? 'Free forever' : 'Billed monthly · $8/mo'}</p>
                       </div>
                     </div>
                     <button className="px-4 py-2 border-2 rounded-xl text-sm font-bold transition-all hover:text-white"
                       style={{ borderColor: avatarColor + '44', color: avatarColor }}
                       onMouseEnter={e => { e.currentTarget.style.backgroundColor = avatarColor; e.currentTarget.style.color = 'white' }}
                       onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = avatarColor }}>
-                      Manage
+                      {user.plan === 'Free' ? 'Upgrade' : 'Manage'}
                     </button>
                   </div>
                 </div>
 
                 {/* Mobile sign out */}
                 <div className="lg:hidden">
-                  <button onClick={logout}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-red-200 dark:border-red-800 text-red-500 font-bold text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                  <button onClick={logout} className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-red-200 dark:border-red-800 text-red-500 font-bold text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                     <span className="material-symbols-outlined text-sm">logout</span>
                     Sign Out
                   </button>
@@ -970,27 +954,34 @@ export function SettingsPage() {
               </>
             )}
 
-            {/* NOTIFICATIONS TAB */}
+            {/* ─── NOTIFICATIONS TAB ─── */}
             {activeTab === 'notifications' && (
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-                <h3 className="font-black text-base mb-6">Notification Preferences</h3>
-                <div className="space-y-4">
+                <h3 className="font-black text-base mb-1">Notifications</h3>
+                <p className="text-sm text-slate-400 mb-6">Control when and how WeekFlow alerts you.</p>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {Object.entries(notifs).map(([key, val]) => {
                     const MAP = {
-                      email:     ['Email notifications',  'Receive daily and weekly summaries by email'],
-                      push:      ['Push notifications',   'Real-time alerts for task reminders'],
-                      reminders: ['Task reminders',       '30 minutes before each scheduled task'],
-                      weekly:    ['Weekly report',        'Every Monday morning — your week at a glance'],
+                      email:     { title: 'Email notifications',  desc: 'Daily and weekly summaries', icon: 'mail' },
+                      push:      { title: 'Push notifications',   desc: 'Real-time alerts on device', icon: 'notifications' },
+                      reminders: { title: 'Task reminders',       desc: '30 min before each task',   icon: 'alarm' },
+                      weekly:    { title: 'Weekly report',        desc: 'Monday morning overview',   icon: 'summarize' },
                     }
+                    const m = MAP[key]
                     return (
-                      <div key={key} className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                        <div>
-                          <p className="font-semibold text-sm">{MAP[key][0]}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{MAP[key][1]}</p>
+                      <div key={key} className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${val ? 'bg-primary/10 text-primary' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                            <span className="material-symbols-outlined text-sm" style={{fontVariationSettings: val ? "'FILL' 1" : "'FILL' 0"}}>{m.icon}</span>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">{m.title}</p>
+                            <p className="text-xs text-slate-400">{m.desc}</p>
+                          </div>
                         </div>
                         <button onClick={() => setNotifs(n => ({...n, [key]: !n[key]}))}
-                          className={`w-12 h-6 rounded-full transition-all relative shrink-0 ${val ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-600'}`}>
-                          <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${val ? 'left-7' : 'left-1'}`} />
+                          className={`w-11 h-6 rounded-full transition-all relative shrink-0 ${val ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                          <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${val ? 'left-6' : 'left-1'}`} />
                         </button>
                       </div>
                     )
@@ -999,40 +990,59 @@ export function SettingsPage() {
               </div>
             )}
 
-            {/* APPEARANCE TAB */}
+            {/* ─── APPEARANCE TAB ─── */}
             {activeTab === 'appearance' && (
-              <div className="space-y-6">
+              <div className="space-y-5">
+                {/* Theme */}
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-                  <h3 className="font-black text-base mb-5">{t.settings.appearance.darkMode.split(' ')[0]} Mode</h3>
+                  <h3 className="font-black text-base mb-1">Theme</h3>
+                  <p className="text-sm text-slate-400 mb-5">Choose your preferred color scheme.</p>
                   <div className="grid grid-cols-2 gap-3">
-                    {[{val:false,label:t.sidebar.lightMode,icon:'light_mode'},{val:true,label:t.sidebar.darkMode,icon:'dark_mode'}].map(opt => (
+                    {[
+                      { val:false, label: t.sidebar.lightMode, icon:'light_mode', bg:'bg-white', preview:'bg-slate-50 border-slate-200' },
+                      { val:true,  label: t.sidebar.darkMode,  icon:'dark_mode',  bg:'bg-slate-900', preview:'bg-slate-800 border-slate-700' },
+                    ].map(opt => (
                       <button key={String(opt.val)} onClick={() => setDarkMode(opt.val)}
-                        className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 transition-all ${darkMode===opt.val ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700 hover:border-primary/40'}`}>
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${darkMode===opt.val ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
-                          <span className="material-symbols-outlined text-3xl">{opt.icon}</span>
+                        className={`relative flex flex-col gap-3 p-4 rounded-2xl border-2 transition-all ${darkMode===opt.val ? 'border-primary shadow-md shadow-primary/15' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
+                        {/* Mini preview */}
+                        <div className={`w-full h-16 rounded-xl border ${opt.preview} overflow-hidden`}>
+                          <div className={`h-3 w-full ${opt.val ? 'bg-slate-700' : 'bg-slate-100'} flex items-center px-2 gap-1`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          </div>
+                          <div className="p-2 space-y-1">
+                            <div className={`h-1.5 rounded w-3/4 ${opt.val ? 'bg-slate-600' : 'bg-slate-200'}`} />
+                            <div className={`h-1.5 rounded w-1/2 ${opt.val ? 'bg-primary/50' : 'bg-primary/30'}`} />
+                          </div>
                         </div>
-                        <span className={`text-sm font-black ${darkMode===opt.val ? 'text-primary' : 'text-slate-500'}`}>{opt.label}</span>
-                        {darkMode===opt.val && <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Active</span>}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`material-symbols-outlined text-sm ${darkMode===opt.val ? 'text-primary' : 'text-slate-400'}`}>{opt.icon}</span>
+                            <span className={`text-sm font-bold ${darkMode===opt.val ? 'text-primary' : 'text-slate-500'}`}>{opt.label}</span>
+                          </div>
+                          {darkMode===opt.val && <span className="w-4 h-4 rounded-full bg-primary flex items-center justify-center"><span className="material-symbols-outlined text-white text-[10px]">check</span></span>}
+                        </div>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Language switcher */}
+                {/* Language */}
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
                   <h3 className="font-black text-base mb-1">{t.settings.appearance.language}</h3>
-                  <p className="text-slate-400 text-sm mb-5">{t.settings.appearance.languageDesc}</p>
+                  <p className="text-sm text-slate-400 mb-5">{t.settings.appearance.languageDesc}</p>
                   <div className="grid grid-cols-3 gap-3">
                     {[
-                      { code: 'en', label: 'English',    flag: '🇺🇸' },
-                      { code: 'pt', label: 'Português',  flag: '🇧🇷' },
-                      { code: 'es', label: 'Español',    flag: '🇪🇸' },
+                      { code:'en', label:'English',   flag:'🇺🇸', sub:'English' },
+                      { code:'pt', label:'Português', flag:'🇧🇷', sub:'Portuguese' },
+                      { code:'es', label:'Español',   flag:'🇪🇸', sub:'Spanish' },
                     ].map(opt => (
                       <button key={opt.code} onClick={() => setLang(opt.code)}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${lang===opt.code ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700 hover:border-primary/40'}`}>
-                        <span className="text-2xl">{opt.flag}</span>
-                        <span className={`text-xs font-black ${lang===opt.code ? 'text-primary' : 'text-slate-500'}`}>{opt.label}</span>
-                        {lang===opt.code && <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Active</span>}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${lang===opt.code ? 'border-primary bg-primary/5 shadow-md shadow-primary/10' : 'border-slate-200 dark:border-slate-700 hover:border-primary/40'}`}>
+                        <span className="text-3xl leading-none">{opt.flag}</span>
+                        <span className={`text-xs font-black ${lang===opt.code ? 'text-primary' : 'text-slate-600 dark:text-slate-400'}`}>{opt.label}</span>
+                        {lang===opt.code && <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">Active</span>}
                       </button>
                     ))}
                   </div>
@@ -1040,67 +1050,85 @@ export function SettingsPage() {
               </div>
             )}
 
-            {/* EXPORT TAB */}
+            {/* ─── EXPORT TAB ─── */}
             {activeTab === 'export' && (
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-                <h3 className="font-black text-base mb-6">Export & Data</h3>
-                <div className="space-y-3">
-                  {[
-                    { icon:'print',          label:'Print / PDF',        desc:'Print your weekly schedule', action:() => navigate('export'), color:'text-primary bg-primary/10' },
-                    { icon:'table_chart',    label:'Export as CSV',       desc:'Download all tasks as spreadsheet', action: dlCSV, color:'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
-                    { icon:'data_object',    label:'Export as JSON',      desc:'Full backup of all your data', action: dlJSON, color:'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
-                    { icon:'calendar_month', label:'Sync to Calendar',    desc:'Export tasks to Google Calendar', action:() => pushToast('Calendar sync coming soon!','info'), color:'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
-                  ].map((item,i) => (
-                    <div key={i} className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary/30 transition-colors">
-                      <div className="flex items-center gap-3">
+              <div className="space-y-3">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+                  <h3 className="font-black text-base mb-1">Export & Data</h3>
+                  <p className="text-sm text-slate-400 mb-5">Download or sync your tasks.</p>
+                  <div className="space-y-2">
+                    {[
+                      { icon:'print',          label:'Print / PDF',     desc:'Print your weekly schedule', action:() => navigate('export'), color:'text-primary bg-primary/10' },
+                      { icon:'table_chart',    label:'Export CSV',       desc:'Download all tasks as spreadsheet', action: dlCSV, color:'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
+                      { icon:'data_object',    label:'Export JSON',      desc:'Full backup of all your data', action: dlJSON, color:'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
+                      { icon:'calendar_month', label:'Sync Calendar',    desc:'Export to Google Calendar', action:() => pushToast('Calendar sync coming soon!','info'), color:'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
+                    ].map((item,i) => (
+                      <button key={i} onClick={item.action}
+                        className="w-full flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary/30 hover:bg-primary/[0.02] transition-all group text-left">
                         <div className={`w-10 h-10 ${item.color} rounded-xl flex items-center justify-center shrink-0`}>
                           <span className="material-symbols-outlined text-sm">{item.icon}</span>
                         </div>
-                        <div>
+                        <div className="flex-1">
                           <p className="text-sm font-bold">{item.label}</p>
                           <p className="text-xs text-slate-400">{item.desc}</p>
                         </div>
-                      </div>
-                      <button onClick={item.action} className="text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors">
-                        Go
+                        <span className="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">chevron_right</span>
                       </button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* DANGER ZONE TAB */}
+            {/* ─── DANGER ZONE TAB ─── */}
             {activeTab === 'danger' && (
               <div className="space-y-4">
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-5 flex items-start gap-3">
-                  <span className="material-symbols-outlined text-amber-500 shrink-0">warning</span>
+                <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl">
+                  <span className="material-symbols-outlined text-amber-500 shrink-0 mt-0.5" style={{fontVariationSettings:"'FILL' 1"}}>warning</span>
                   <div>
-                    <p className="font-black text-amber-800 dark:text-amber-300 text-sm">Caution</p>
-                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">These actions cannot be undone.</p>
+                    <p className="font-black text-amber-800 dark:text-amber-300 text-sm">Caution — irreversible actions</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">These actions cannot be undone. Proceed carefully.</p>
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-red-200 dark:border-red-900 p-6">
-                  <h4 className="font-black text-base mb-1">Clear All Tasks</h4>
-                  <p className="text-slate-500 text-sm mb-4">Permanently delete all {tasks.length} tasks.</p>
-                  <button onClick={() => { if (!confirmClear) { setConfirmClear(true); return }; clearAllTasks(); pushToast('All tasks deleted.','info'); setConfirmClear(false) }}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border-2 ${confirmClear ? 'bg-red-500 text-white border-red-500' : 'border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'}`}>
-                    <span className="material-symbols-outlined text-sm">delete_sweep</span>
-                    {confirmClear ? 'Confirm — delete all tasks' : 'Clear All Tasks'}
-                  </button>
-                  {confirmClear && <button onClick={() => setConfirmClear(false)} className="ml-3 text-sm text-slate-400 underline">Cancel</button>}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-orange-500 text-sm">delete_sweep</span>
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm">Clear All Tasks</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Permanently delete all {tasks.length} tasks from your account.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => { if (!confirmClear) { setConfirmClear(true); return }; clearAllTasks(); pushToast('All tasks deleted.','info'); setConfirmClear(false) }}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${confirmClear ? 'bg-red-500 text-white shadow-lg shadow-red-500/25' : 'border-2 border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'}`}>
+                      <span className="material-symbols-outlined text-sm">delete_sweep</span>
+                      {confirmClear ? 'Confirm deletion' : 'Clear All Tasks'}
+                    </button>
+                    {confirmClear && <button onClick={() => setConfirmClear(false)} className="text-sm text-slate-400 hover:text-slate-600 font-medium">Cancel</button>}
+                  </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-red-200 dark:border-red-900 p-6">
-                  <h4 className="font-black text-base text-red-600 mb-1">Delete Account</h4>
-                  <p className="text-slate-500 text-sm mb-4">Permanently delete your account and all data. You'll be logged out immediately.</p>
-                  <button onClick={() => { if (!confirmDelete) { setConfirmDelete(true); return }; deleteAccount() }}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border-2 ${confirmDelete ? 'bg-red-500 text-white border-red-500 animate-pulse' : 'border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'}`}>
-                    <span className="material-symbols-outlined text-sm">person_remove</span>
-                    {confirmDelete ? '⚠️ Confirm Delete Account' : 'Delete Account'}
-                  </button>
-                  {confirmDelete && <button onClick={() => setConfirmDelete(false)} className="ml-3 text-sm text-slate-400 underline">Cancel</button>}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-red-200 dark:border-red-900/50 p-6">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-red-500 text-sm">person_remove</span>
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-red-600 dark:text-red-400">Delete Account</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Permanently delete your account and all data. You'll be logged out immediately.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => { if (!confirmDelete) { setConfirmDelete(true); return }; deleteAccount() }}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${confirmDelete ? 'bg-red-500 text-white shadow-lg shadow-red-500/25 animate-pulse' : 'border-2 border-red-300 dark:border-red-700 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'}`}>
+                      <span className="material-symbols-outlined text-sm">person_remove</span>
+                      {confirmDelete ? '⚠️ Confirm — delete everything' : 'Delete Account'}
+                    </button>
+                    {confirmDelete && <button onClick={() => setConfirmDelete(false)} className="text-sm text-slate-400 hover:text-slate-600 font-medium">Cancel</button>}
+                  </div>
                 </div>
               </div>
             )}
