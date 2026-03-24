@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 
 const SB_URL = import.meta.env.VITE_SUPABASE_URL || ''
 const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+const SB_SERVICE = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || ''
 
 // Admin emails — only these can access the admin panel
 const ADMIN_EMAILS = ['gufidelis116@gmail.com', 'admin@weekflow.app', 'weekflowspace@outlook.com']
@@ -59,8 +60,8 @@ export default function AdminPage() {
       ...opts,
       headers: {
         'Content-Type': 'application/json',
-        'apikey': SB_KEY,
-        'Authorization': `Bearer ${adminToken}`,
+        'apikey': SB_SERVICE || SB_KEY,
+        'Authorization': `Bearer ${SB_SERVICE || adminToken}`,
         'Prefer': 'return=representation',
         ...(opts.headers || {}),
       },
