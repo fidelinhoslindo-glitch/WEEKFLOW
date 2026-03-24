@@ -73,6 +73,9 @@ export default function AdminPage() {
     return text ? JSON.parse(text) : []
   }
 
+  // Load users when authenticated
+  useEffect(() => { if (adminToken) loadUsers() }, [adminToken])
+
   // Show login form if not authenticated
   if (!adminToken) {
     return (
@@ -102,8 +105,6 @@ export default function AdminPage() {
       </div>
     )
   }
-
-  useEffect(() => { if (adminToken) loadUsers() }, [adminToken])
 
   async function loadUsers() {
     setLoading(true)
