@@ -315,6 +315,7 @@ export function AppProvider({ children }) {
 
   const [page, setPage] = useState(() => {
     const urlPage = getPageFromUrl()
+    if (urlPage === 'admin') return 'admin'
     if (urlPage) return urlPage
     if (!load(LS.AUTH, false)) return 'landing'
     const ob = load(LS.ONBOARD, {})

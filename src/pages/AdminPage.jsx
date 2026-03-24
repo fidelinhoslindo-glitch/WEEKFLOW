@@ -1,93 +1,109 @@
 import { useState, useEffect } from 'react'
-import { useApp } from '../context/AppContext'
 
 const SB_URL = import.meta.env.VITE_SUPABASE_URL || ''
 const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
 // Admin emails — only these can access the admin panel
-const ADMIN_EMAILS = ['gufidelis116@gmail.com', 'admin@weekflow.app']
+const ADMIN_EMAILS = ['gufidelis116@gmail.com', 'admin@weekflow.app', 'weekflowspace@outlook.com']
 
 function isAdmin(email) { return ADMIN_EMAILS.includes(email?.toLowerCase()) }
 
-async function getToken() {
-  // Try JSON.parse first (save() uses JSON.stringify), fallback to raw
-  try { const raw = localStorage.getItem('wf_token'); return raw ? JSON.parse(raw) : null } catch { return localStorage.getItem('wf_token') }
-}
-
-async function refreshToken() {
-  // Try to get a fresh token via Supabase refresh
-  const refreshTk = (() => { try { const r = localStorage.getItem('wf_refresh_token'); return r ? JSON.parse(r) : r } catch { return localStorage.getItem('wf_refresh_token') } })()
-  if (!refreshTk || !SB_URL || !SB_KEY) return null
-  try {
-    const res = await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
-      body: JSON.stringify({ refresh_token: refreshTk })
-    })
-    if (!res.ok) return null
-    const d = await res.json()
-    if (d.access_token) {
-      localStorage.setItem('wf_token', JSON.stringify(d.access_token))
-      if (d.refresh_token) localStorage.setItem('wf_refresh_token', JSON.stringify(d.refresh_token))
-      return d.access_token
-    }
-  } catch {}
-  return null
-}
-
-async function sbFetch(path, opts = {}) {
-  let token = await getToken()
-  if (!token || token === 'null') token = null
-  if (!SB_URL || !SB_KEY) throw new Error('Supabase not configured')
-  if (!token) throw new Error('Not authenticated. Please log in again.')
-  const doFetch = (tk) => fetch(`${SB_URL}/rest/v1/${path}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SB_KEY,
-      'Authorization': `Bearer ${tk}`,
-      'Prefer': 'return=representation',
-      ...(opts.headers || {}),
-    },
-  })
-  let res = await doFetch(token)
-  // If 401, try refreshing the token
-  if (res.status === 401) {
-    const newToken = await refreshToken()
-    if (newToken) { token = newToken; res = await doFetch(token) }
-  }
-  const text = await res.text()
-  if (!res.ok) {
-    const err = text ? JSON.parse(text) : {}
-    if (res.status === 401) throw new Error('Session expired. Please log out and log in again.')
-    throw new Error(err.message || err.hint || `HTTP ${res.status}`)
-  }
-  return text ? JSON.parse(text) : []
-}
-
 export default function AdminPage() {
-  const { navigate, user, pushToast } = useApp()
+  // Self-contained admin auth — independent of app login
+  const [adminToken, setAdminToken] = useState(null)
+  const [adminEmail, setAdminEmail] = useState(null)
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPass, setLoginPass] = useState('')
+  const [loginErr, setLoginErr] = useState('')
+  const [loginLoading, setLoginLoading] = useState(false)
+
   const [users,     setUsers]     = useState([])
   const [loading,   setLoading]   = useState(true)
   const [search,    setSearch]    = useState('')
   const [updating,  setUpdating]  = useState(null)
   const [stats,     setStats]     = useState({ total:0, pro:0, business:0, free:0, thisMonth:0 })
   const [activeTab, setActiveTab] = useState('users')
+  const [toast, setToast] = useState(null)
 
-  // Guard — only admins
-  if (!isAdmin(user?.email)) {
+  const pushToast = (msg, type='info') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000) }
+  const navigate = (to) => { window.location.href = to === 'landing' ? '/' : `/${to}` }
+
+  // Admin login
+  async function handleAdminLogin(e) {
+    e.preventDefault()
+    setLoginErr('')
+    setLoginLoading(true)
+    try {
+      if (!SB_URL || !SB_KEY) throw new Error('Supabase not configured')
+      const res = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+        body: JSON.stringify({ email: loginEmail.trim(), password: loginPass })
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error_description || 'Login failed')
+      if (!isAdmin(d.user?.email)) throw new Error('This account is not an admin.')
+      setAdminToken(d.access_token)
+      setAdminEmail(d.user.email)
+    } catch (err) {
+      setLoginErr(err.message)
+    } finally {
+      setLoginLoading(false)
+    }
+  }
+
+  // Supabase fetch using admin token
+  async function sbFetch(path, opts = {}) {
+    if (!adminToken || !SB_URL || !SB_KEY) throw new Error('Not authenticated')
+    const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
+      ...opts,
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SB_KEY,
+        'Authorization': `Bearer ${adminToken}`,
+        'Prefer': 'return=representation',
+        ...(opts.headers || {}),
+      },
+    })
+    const text = await res.text()
+    if (!res.ok) {
+      const err = text ? JSON.parse(text) : {}
+      throw new Error(err.message || err.hint || `HTTP ${res.status}`)
+    }
+    return text ? JSON.parse(text) : []
+  }
+
+  // Show login form if not authenticated
+  if (!adminToken) {
     return (
-      <div className="min-h-screen bg-bg-light dark:bg-bg-dark flex items-center justify-center">
-        <div className="text-center">
-          <span className="material-symbols-outlined text-6xl text-slate-300 mb-4 block">lock</span>
-          <h2 className="text-2xl font-black mb-2">Access Denied</h2>
-          <p className="text-slate-400 mb-6">You don't have permission to view this page.</p>
-          <button onClick={() => navigate('dashboard')} className="px-6 py-3 bg-primary text-white rounded-xl font-bold">Go to Dashboard</button>
-        </div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
+        <form onSubmit={handleAdminLogin} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 w-full max-w-sm shadow-xl">
+          <div className="flex items-center justify-center w-14 h-14 bg-primary/10 rounded-2xl mx-auto mb-5">
+            <span className="material-symbols-outlined text-primary text-2xl" style={{fontVariationSettings:"'FILL' 1"}}>admin_panel_settings</span>
+          </div>
+          <h2 className="text-xl font-black text-center mb-1">Admin Panel</h2>
+          <p className="text-sm text-slate-400 text-center mb-6">Sign in with an admin account</p>
+          {loginErr && (
+            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm p-3 rounded-xl mb-4 font-medium">{loginErr}</div>
+          )}
+          <label className="block text-xs font-bold text-slate-500 mb-1.5">Email</label>
+          <input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required
+            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-primary/30"
+            placeholder="admin@weekflow.app" />
+          <label className="block text-xs font-bold text-slate-500 mb-1.5">Password</label>
+          <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} required
+            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm mb-6 focus:outline-none focus:ring-2 focus:ring-primary/30"
+            placeholder="••••••••" />
+          <button type="submit" disabled={loginLoading}
+            className="w-full py-3 bg-primary text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all disabled:opacity-50">
+            {loginLoading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
       </div>
     )
   }
 
-  useEffect(() => { loadUsers() }, [])
+  useEffect(() => { if (adminToken) loadUsers() }, [adminToken])
 
   async function loadUsers() {
     setLoading(true)
@@ -145,17 +161,20 @@ export default function AdminPage() {
   )
 
   return (
-    <div className="min-h-screen bg-bg-light dark:bg-bg-dark">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-[9999] px-4 py-3 rounded-xl text-sm font-medium shadow-lg ${toast.type==='success'?'bg-emerald-500 text-white':toast.type==='error'?'bg-red-500 text-white':'bg-slate-800 text-white'}`}>
+          {toast.msg}
+        </div>
+      )}
       {/* Header */}
       <div className="border-b border-slate-200 dark:border-slate-800 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate('dashboard')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl">
-              <span className="material-symbols-outlined text-sm">arrow_back</span>
-            </button>
             <div>
               <h1 className="text-xl font-black">Admin Panel</h1>
-              <p className="text-xs text-slate-400">WeekFlow Management</p>
+              <p className="text-xs text-slate-400">{adminEmail}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -163,6 +182,9 @@ export default function AdminPage() {
             <span className="text-xs text-slate-400 font-medium">Live</span>
             <button onClick={loadUsers} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl ml-2">
               <span className="material-symbols-outlined text-sm">refresh</span>
+            </button>
+            <button onClick={() => { setAdminToken(null); setAdminEmail(null) }} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 rounded-xl ml-1" title="Logout">
+              <span className="material-symbols-outlined text-sm">logout</span>
             </button>
           </div>
         </div>
