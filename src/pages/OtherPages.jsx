@@ -8,9 +8,25 @@ import { useState } from 'react'
 // ─── Daily Detail ─────────────────────────────────────────────────────────────
 export function DailyDetailPage() {
   const { tasks, toggleTask, weekDays, categoryColors, setShowAddTask } = useApp()
-  const [activeDay, setActiveDay] = useState('Monday')
+  const [activeDay, setActiveDay] = useState(() => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()])
 
-  const todayTasks = tasks.filter(t => t.day === activeDay)
+  // Compute current week dates for specificDate filtering
+  const _now = new Date()
+  const _jsDay = _now.getDay()
+  const _dayToIdx = { Monday:1, Tuesday:2, Wednesday:3, Thursday:4, Friday:5, Saturday:6, Sunday:0 }
+  const _weekDates = {}
+  Object.entries(_dayToIdx).forEach(([name, idx]) => {
+    const diff = idx - _jsDay
+    const d = new Date(_now)
+    d.setDate(d.getDate() + diff)
+    _weekDates[name] = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  })
+  const filterByDay = (day) => tasks.filter(t => {
+    if (t.specificDate) return t.specificDate === _weekDates[day]
+    return t.day === day
+  })
+
+  const todayTasks = filterByDay(activeDay)
   const done = todayTasks.filter(t => t.completed).length
   const pct = todayTasks.length ? Math.round((done / todayTasks.length) * 100) : 0
 
@@ -23,7 +39,7 @@ export function DailyDetailPage() {
           {/* Left: day list */}
           <aside className="w-48 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 space-y-1">
             {weekDays.map(day => {
-              const dt = tasks.filter(t => t.day === day)
+              const dt = filterByDay(day)
               const dd = dt.filter(t => t.completed).length
               return (
                 <button key={day} onClick={() => setActiveDay(day)} className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all ${activeDay === day ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
@@ -301,7 +317,11 @@ export function CalendarPage() {
 
   const getDayTasks = (date) => {
     const dow = new Date(year, month, date).getDay()
-    return tasks.filter(t => t.day === DOW_TO_NAME[dow])
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`
+    return tasks.filter(t => {
+      if (t.specificDate) return t.specificDate === dateStr
+      return t.day === DOW_TO_NAME[dow]
+    })
   }
 
   const today = new Date()

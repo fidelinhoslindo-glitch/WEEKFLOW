@@ -213,7 +213,11 @@ export default function SmartCalendarPage() {
 
   const getDayTasks = (date) => {
     const dow = new Date(year, mon, date).getDay()
-    return tasks.filter(t => t.day === DOW_FULL[dow])
+    const dateStr = `${year}-${String(mon + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`
+    return tasks.filter(t => {
+      if (t.specificDate) return t.specificDate === dateStr
+      return t.day === DOW_FULL[dow]
+    })
   }
 
   const getDayInfo = (date) => {

@@ -19,8 +19,23 @@ export default function WeeklyPlannerPage() {
   // Mobile: which day is selected in single-day view
   const [mobileDay,  setMobileDay]  = useState('Monday')
 
+  // Compute actual dates for each day name in the current week (Mon-Sun)
+  const _now = new Date()
+  const _jsDay = _now.getDay() // 0=Sun
+  const _weekDates = {}
+  const _dayToIdx = { Monday:1, Tuesday:2, Wednesday:3, Thursday:4, Friday:5, Saturday:6, Sunday:0 }
+  Object.entries(_dayToIdx).forEach(([name, idx]) => {
+    const diff = idx - _jsDay
+    const d = new Date(_now)
+    d.setDate(d.getDate() + diff)
+    _weekDates[name] = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  })
+
   const filtered = (day) => tasks
-    .filter(t => t.day === day)
+    .filter(t => {
+      if (t.specificDate) return t.specificDate === _weekDates[day]
+      return t.day === day
+    })
     .filter(t => filterCat  === 'All' || t.category === filterCat)
     .filter(t => filterPrio === 'All' || t.priority === filterPrio)
     .filter(t => filterDone === 'All' || (filterDone === 'Done' ? t.completed : !t.completed))
@@ -285,7 +300,7 @@ export default function WeeklyPlannerPage() {
             <div className="min-w-[900px] flex gap-3" style={{ minHeight: 'calc(100vh - 280px)' }}>
               {weekDays.map(day => {
                 const dayTasks = filtered(day)
-                const allDay   = tasks.filter(t => t.day === day)
+                const allDay   = tasks.filter(t => t.specificDate ? t.specificDate === _weekDates[day] : t.day === day)
                 const done     = allDay.filter(t => t.completed).length
                 const isOver   = dragOver === day
 

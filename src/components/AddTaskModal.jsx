@@ -92,8 +92,9 @@ export default function AddTaskModal() {
   // EN_DAYS = English keys stored in tasks; DAYS/DAY_SHORT = translated display labels only
   const EN_DAYS_LIST = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
   const DAY_SHORT = t.common.weekdaysShort
+  const todayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()]
   const [form, setForm] = useState({
-    title: '', category: 'Work', days: ['Monday'], time: '09:00', duration: 60, priority: 'medium', notes: '', color: '', recurring: false
+    title: '', category: 'Work', days: [todayName], time: '09:00', duration: 60, priority: 'medium', notes: '', color: '', recurring: false
   })
   const [saved, setSaved] = useState(false)
   const [showTimePicker, setShowTimePicker] = useState(false)

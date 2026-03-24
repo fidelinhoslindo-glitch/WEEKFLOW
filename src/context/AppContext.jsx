@@ -129,6 +129,9 @@ export function AppProvider({ children }) {
     if (SUPABASE_ENABLED && password) {
       try {
         const res = await supabaseSignIn(email, password)
+        // Clear previous user data before loading new user's data
+        localStorage.removeItem(LS.TASKS); localStorage.removeItem(LS.ONBOARD); localStorage.removeItem(LS.WEEK); localStorage.removeItem('wf_notes'); localStorage.removeItem('wf_completion_history')
+        setTasksState([]); setOnboardingDataState({})
         const token = res.access_token
         save(LS.TOKEN, token); setSbToken(token)
         const u = { name: res.user?.user_metadata?.name || name || email.split('@')[0], email, plan:'Free', avatar:null, avatarColor:'#6467f2', id: res.user?.id }
@@ -179,7 +182,17 @@ export function AppProvider({ children }) {
 
   const logout = async () => {
     if (sbToken) try { await supabaseSignOut(sbToken) } catch {}
-    save(LS.AUTH, false); save(LS.TOKEN, null)
+    // Clear all user-specific data so next login starts clean
+    localStorage.removeItem(LS.TASKS)
+    localStorage.removeItem(LS.ONBOARD)
+    localStorage.removeItem(LS.WEEK)
+    localStorage.removeItem(LS.USER)
+    localStorage.removeItem('wf_notes')
+    localStorage.removeItem('wf_completion_history')
+    setTasksState([])
+    setOnboardingDataState({})
+    setUserState({ name:'', email:'', plan:'Free', avatar:null, avatarColor:'#6467f2' })
+    save(LS.AUTH, false); localStorage.removeItem(LS.TOKEN)
     setIsLoggedIn(false); setSbToken(null); setPage('landing')
   }
 
@@ -261,8 +274,8 @@ export function AppProvider({ children }) {
   const _id = useRef(Date.now())
   const nextId = () => { _id.current = Math.max(_id.current + 1, Date.now()); return _id.current }
 
-  const addTask   = (task)      => persistTasks(p => [...p, { ...task, id:nextId(), completed:false, notes:task.notes||'', recurring:task.recurring||false, color:task.color||'' }])
-  const addTasks  = (list)      => persistTasks(p => [...p, ...list.map(t => ({ ...t, id:nextId(), completed:false, notes:t.notes||'', recurring:t.recurring||false, color:t.color||'' }))])
+  const addTask   = (task)      => persistTasks(p => [...p, { ...task, id:nextId(), completed:false, notes:task.notes||'', recurring:task.recurring||false, color:task.color||'', ...(task.specificDate ? { specificDate: task.specificDate } : {}) }])
+  const addTasks  = (list)      => persistTasks(p => [...p, ...list.map(t => ({ ...t, id:nextId(), completed:false, notes:t.notes||'', recurring:t.recurring||false, color:t.color||'', ...(t.specificDate ? { specificDate: t.specificDate } : {}) }))])
   const updateTask= (id,ch)     => persistTasks(p => p.map(t => t.id===id ? {...t,...ch} : t))
   const toggleTask= (id)        => persistTasks(p => p.map(t => t.id===id ? {...t,completed:!t.completed} : t))
   const deleteTask= (id)        => persistTasks(p => p.filter(t => t.id!==id))

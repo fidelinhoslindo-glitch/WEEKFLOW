@@ -10,7 +10,11 @@ const ADMIN_EMAILS = ['gufidelis116@gmail.com', 'admin@weekflow.app']
 function isAdmin(email) { return ADMIN_EMAILS.includes(email?.toLowerCase()) }
 
 async function sbFetch(path, opts = {}) {
-  const token = localStorage.getItem('wf_token')
+  let token = null
+  try { const raw = localStorage.getItem('wf_token'); token = raw ? JSON.parse(raw) : null } catch { token = localStorage.getItem('wf_token') }
+  if (!token || token === 'null') token = null
+  if (!SB_URL || !SB_KEY) throw new Error('Supabase not configured')
+  if (!token) throw new Error('Not authenticated. Please log in again.')
   const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
     ...opts,
     headers: {
@@ -22,6 +26,10 @@ async function sbFetch(path, opts = {}) {
     },
   })
   const text = await res.text()
+  if (!res.ok) {
+    const err = text ? JSON.parse(text) : {}
+    throw new Error(err.message || err.hint || `HTTP ${res.status}`)
+  }
   return text ? JSON.parse(text) : []
 }
 
@@ -64,7 +72,8 @@ export default function AdminPage() {
       }).length
       setStats({ total: data.length, pro, business: biz, free: data.length - pro - biz, thisMonth })
     } catch(e) {
-      pushToast('Could not load users. Check Supabase connection.', 'error')
+      console.error('Admin loadUsers error:', e)
+      pushToast(`Could not load users: ${e.message || 'Check Supabase connection.'}`, 'error')
     } finally {
       setLoading(false)
     }

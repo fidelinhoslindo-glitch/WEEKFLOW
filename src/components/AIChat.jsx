@@ -17,11 +17,14 @@ ALWAYS respond with valid JSON (no extra text). Use one of these actions:
       "time": "HH:MM",
       "duration": 60,
       "priority": "low|medium|high",
-      "notes": ""
+      "notes": "",
+      "specificDate": "YYYY-MM-DD or null"
     }
   ],
   "message": "Confirmation message"
 }
+- If user asks for a SPECIFIC DATE (e.g. "April 30"), set specificDate to that date (YYYY-MM-DD) and days to ONLY the weekday of that date. The task will appear ONLY on that exact date, not every week.
+- If user asks for recurring/weekly tasks or just day names, leave specificDate as null.
 
 2) NAVIGATE to a page:
 {
@@ -73,7 +76,9 @@ WEEKFLOW FEATURES you can tell users about:
 
 RULES:
 - Valid day names: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
-- If day not specified, pick logical day(s) based on context
+- Tasks are weekly — they use day-of-week names, NOT specific dates.
+- IMPORTANT: If user mentions a specific date, the system will append the correct weekday in brackets like [Thursday]. ALWAYS use that weekday. Put the task on ONLY that one day.
+- If day not specified, pick logical day(s) based on context (default to today)
 - Default times: gym=07:00, work=09:00, study=19:00, meeting=10:00, lunch=12:00
 - Default durations: gym=60, meeting=30, study=90, work=60, lunch=60
 - Categories: "Work" for work/meetings, "Gym" for exercise/sports, "Study" for learning, "Rest" for breaks/leisure, "Other" for everything else
@@ -99,6 +104,69 @@ const CAT_STYLE = {
   Other: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300',
 }
 
+// Pre-process user message: detect dates and append the correct weekday so the LLM never guesses
+const MONTH_MAP = {
+  // English
+  january:1, february:2, march:3, april:4, may:5, june:6, july:7, august:8, september:9, october:10, november:11, december:12,
+  jan:1, feb:2, mar:3, apr:4, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12,
+  // Portuguese
+  janeiro:1, fevereiro:2, março:3, marco:3, abril:4, maio:5, junho:6, julho:7, agosto:8, setembro:9, outubro:10, novembro:11, dezembro:12,
+  // Spanish
+  enero:1, febrero:2, marzo:3, mayo:5, junio:6, julio:7, septiembre:9, noviembre:11, diciembre:12,
+}
+const DAY_NAMES_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+
+// Extract dates from user message → returns { enrichedMsg, resolvedDates: { weekday→dateStr } }
+function extractDatesFromMessage(msg) {
+  const now = new Date()
+  const currentYear = now.getFullYear()
+
+  const patterns = [
+    /(?:dia\s+)?(\d{1,2})\s+(?:de\s+)?(\w+)/gi,
+    /(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?(?!\d)/gi,
+  ]
+
+  const resolved = [] // { weekday, dateStr }
+
+  for (const pat of patterns) {
+    let m
+    while ((m = pat.exec(msg)) !== null) {
+      let day, monthStr
+      if (/^\d+$/.test(m[1])) {
+        day = parseInt(m[1]); monthStr = m[2].toLowerCase()
+      } else {
+        day = parseInt(m[2]); monthStr = m[1].toLowerCase()
+      }
+      const month = MONTH_MAP[monthStr]
+      if (!month || day < 1 || day > 31) continue
+
+      let year = currentYear
+      const testDate = new Date(year, month - 1, day)
+      if (testDate < new Date(now.getFullYear(), now.getMonth(), now.getDate())) year++
+
+      const date = new Date(year, month - 1, day)
+      if (date.getMonth() !== month - 1) continue
+
+      const weekday = DAY_NAMES_FULL[date.getDay()]
+      const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+      resolved.push({ original: m[0], weekday, dateStr })
+    }
+  }
+
+  const unique = [...new Map(resolved.map(r => [r.dateStr, r])).values()]
+  // Build weekday→dateStr map for post-processing
+  const dateMap = {}
+  unique.forEach(r => { dateMap[r.weekday] = r.dateStr })
+
+  let enriched = msg
+  if (unique.length > 0) {
+    const suffix = unique.map(r => `[${r.original} = ${r.weekday}]`).join(' ')
+    enriched = `${msg}\n\nResolved dates: ${suffix}`
+  }
+
+  return { enrichedMsg: enriched, dateMap }
+}
+
 const todayKey = () => `wf_ai_count_${new Date().toISOString().split('T')[0]}`
 const getAiCount = () => { try { return parseInt(localStorage.getItem(todayKey()) || '0') } catch { return 0 } }
 const incAiCount = () => { try { localStorage.setItem(todayKey(), String(getAiCount() + 1)) } catch {} }
@@ -109,6 +177,7 @@ export default function AIChat({ onClose }) {
   const [input,   setInput]   = useState('')
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState(null)
+  const lastDateMap = useRef({}) // detected dates from last user message: { weekday → "YYYY-MM-DD" }
   const [aiCount, setAiCount] = useState(getAiCount)
   const bottomRef = useRef(null)
   const inputRef  = useRef(null)
@@ -124,10 +193,21 @@ export default function AIChat({ onClose }) {
 
   // Build context about user's current tasks
   const buildContext = () => {
-    const today = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()]
+    const now = new Date()
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+    const today = dayNames[now.getDay()]
+    const dateStr = now.toISOString().split('T')[0] // e.g. 2026-03-23
     const todayTasks = tasks.filter(t => t.day === today)
     const completed = tasks.filter(t => t.completed).length
     const pending = tasks.length - completed
+
+    // Build week dates for context (so AI can map "Tuesday" → "March 24" etc.)
+    const weekDates = dayNames.map((name, i) => {
+      const d = new Date(now)
+      d.setDate(d.getDate() + (i - now.getDay()))
+      return `${name} = ${d.toISOString().split('T')[0]}`
+    }).join(', ')
+
 
     const taskSummary = weekDays.map(day => {
       const dayTasks = tasks.filter(t => t.day === day)
@@ -136,7 +216,8 @@ export default function AIChat({ onClose }) {
       return `${day}: ${items}`
     }).filter(Boolean).join('\n')
 
-    return `Today is ${today}. User: ${user?.name || 'User'}.
+    return `Today is ${today}, ${dateStr}. This week: ${weekDates}.
+User: ${user?.name || 'User'}.
 Total tasks: ${tasks.length} (${completed} done, ${pending} pending). Completion: ${completionRate}%.
 Today's tasks: ${todayTasks.length} (${todayTasks.filter(t=>t.completed).length} done).
 Dark mode: ${darkMode ? 'on' : 'off'}.
@@ -211,7 +292,7 @@ ${taskSummary ? '\nAll tasks:\n' + taskSummary : 'No tasks yet.'}`
           messages: [
             { role: 'system', content: SYSTEM_PROMPT + '\n\nContext:\n' + ctx },
             ...history,
-            { role: 'user', content: msg },
+            { role: 'user', content: (() => { const { enrichedMsg, dateMap } = extractDatesFromMessage(msg); lastDateMap.current = dateMap; return enrichedMsg })() },
           ],
         }),
       })
@@ -238,9 +319,22 @@ ${taskSummary ? '\nAll tasks:\n' + taskSummary : 'No tasks yet.'}`
 
   const confirmTasks = () => {
     if (!preview?.tasks) return
+    const dateMap = lastDateMap.current
+    const dateEntries = Object.entries(dateMap) // [[weekday, "YYYY-MM-DD"], ...]
     const flat = preview.tasks.flatMap(t => {
-      const { days, ...rest } = t
-      return (days || []).map(day => ({ ...rest, day }))
+      const { days, specificDate: sd, ...rest } = t
+      return (days || []).map(day => {
+        // Try exact weekday match first, then if only one date was detected use it anyway
+        // (LLM often picks wrong weekday, so fallback to the single detected date)
+        let resolvedDate = sd || dateMap[day] || null
+        let resolvedDay = day
+        if (!resolvedDate && dateEntries.length === 1) {
+          // Only one date detected — LLM likely meant this date but picked wrong weekday
+          resolvedDate = dateEntries[0][1]
+          resolvedDay = dateEntries[0][0] // correct weekday
+        }
+        return { ...rest, day: resolvedDay, ...(resolvedDate ? { specificDate: resolvedDate } : {}) }
+      })
     })
     addTasks(flat)
     pushToast(`${flat.length} task${flat.length > 1 ? 's' : ''} added!`, 'success')
