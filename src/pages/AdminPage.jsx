@@ -41,7 +41,7 @@ export default function AdminPage() {
         body: JSON.stringify({ email: loginEmail.trim(), password: loginPass })
       })
       const d = await res.json()
-      if (!res.ok) throw new Error(d.error_description || 'Login failed')
+      if (!res.ok) throw new Error(d.error_description || d.msg || d.error || 'Login failed')
       if (!isAdmin(d.user?.email)) throw new Error('This account is not an admin.')
       setAdminToken(d.access_token)
       setAdminEmail(d.user.email)
