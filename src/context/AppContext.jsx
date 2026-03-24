@@ -118,7 +118,7 @@ export function AppProvider({ children }) {
   const login = async (name, email, password) => {
     // password=null means OAuth already handled (token already in localStorage)
     if (password === null) {
-      const existingToken = localStorage.getItem('wf_token')
+      const existingToken = load(LS.TOKEN, null)
       const u = { name: name || email?.split('@')[0] || 'User', email: email || '', plan:'Free', avatar:null, avatarColor:'#6467f2' }
       save(LS.USER, u); setUserState(u)
       save(LS.AUTH, true); setIsLoggedIn(true)
@@ -134,6 +134,7 @@ export function AppProvider({ children }) {
         setTasksState([]); setOnboardingDataState({})
         const token = res.access_token
         save(LS.TOKEN, token); setSbToken(token)
+        if (res.refresh_token) localStorage.setItem('wf_refresh_token', JSON.stringify(res.refresh_token))
         const u = { name: res.user?.user_metadata?.name || name || email.split('@')[0], email, plan:'Free', avatar:null, avatarColor:'#6467f2', id: res.user?.id }
         save(LS.USER, u); setUserState(u)
         save(LS.AUTH, true); setIsLoggedIn(true)
@@ -192,7 +193,7 @@ export function AppProvider({ children }) {
     setTasksState([])
     setOnboardingDataState({})
     setUserState({ name:'', email:'', plan:'Free', avatar:null, avatarColor:'#6467f2' })
-    save(LS.AUTH, false); localStorage.removeItem(LS.TOKEN)
+    save(LS.AUTH, false); localStorage.removeItem(LS.TOKEN); localStorage.removeItem('wf_refresh_token')
     setIsLoggedIn(false); setSbToken(null); setPage('landing')
   }
 

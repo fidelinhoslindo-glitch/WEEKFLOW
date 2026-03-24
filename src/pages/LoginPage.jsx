@@ -63,7 +63,9 @@ export default function LoginPage() {
       return
     }
 
-    localStorage.setItem('wf_token', accessToken)
+    localStorage.setItem('wf_token', JSON.stringify(accessToken))
+    const refreshToken = params.get('refresh_token')
+    if (refreshToken) localStorage.setItem('wf_refresh_token', JSON.stringify(refreshToken))
     fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${accessToken}` }
     })

@@ -9,25 +9,56 @@ const ADMIN_EMAILS = ['gufidelis116@gmail.com', 'admin@weekflow.app']
 
 function isAdmin(email) { return ADMIN_EMAILS.includes(email?.toLowerCase()) }
 
+async function getToken() {
+  // Try JSON.parse first (save() uses JSON.stringify), fallback to raw
+  try { const raw = localStorage.getItem('wf_token'); return raw ? JSON.parse(raw) : null } catch { return localStorage.getItem('wf_token') }
+}
+
+async function refreshToken() {
+  // Try to get a fresh token via Supabase refresh
+  const refreshTk = (() => { try { const r = localStorage.getItem('wf_refresh_token'); return r ? JSON.parse(r) : r } catch { return localStorage.getItem('wf_refresh_token') } })()
+  if (!refreshTk || !SB_URL || !SB_KEY) return null
+  try {
+    const res = await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+      body: JSON.stringify({ refresh_token: refreshTk })
+    })
+    if (!res.ok) return null
+    const d = await res.json()
+    if (d.access_token) {
+      localStorage.setItem('wf_token', JSON.stringify(d.access_token))
+      if (d.refresh_token) localStorage.setItem('wf_refresh_token', JSON.stringify(d.refresh_token))
+      return d.access_token
+    }
+  } catch {}
+  return null
+}
+
 async function sbFetch(path, opts = {}) {
-  let token = null
-  try { const raw = localStorage.getItem('wf_token'); token = raw ? JSON.parse(raw) : null } catch { token = localStorage.getItem('wf_token') }
+  let token = await getToken()
   if (!token || token === 'null') token = null
   if (!SB_URL || !SB_KEY) throw new Error('Supabase not configured')
   if (!token) throw new Error('Not authenticated. Please log in again.')
-  const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
+  const doFetch = (tk) => fetch(`${SB_URL}/rest/v1/${path}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
       'apikey': SB_KEY,
-      'Authorization': `Bearer ${token || SB_KEY}`,
+      'Authorization': `Bearer ${tk}`,
       'Prefer': 'return=representation',
       ...(opts.headers || {}),
     },
   })
+  let res = await doFetch(token)
+  // If 401, try refreshing the token
+  if (res.status === 401) {
+    const newToken = await refreshToken()
+    if (newToken) { token = newToken; res = await doFetch(token) }
+  }
   const text = await res.text()
   if (!res.ok) {
     const err = text ? JSON.parse(text) : {}
+    if (res.status === 401) throw new Error('Session expired. Please log out and log in again.')
     throw new Error(err.message || err.hint || `HTTP ${res.status}`)
   }
   return text ? JSON.parse(text) : []
