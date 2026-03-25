@@ -75,7 +75,7 @@ export default function LoginPage() {
         login(userName, u.email || '', null)
         navigate(getInitialPage())
       })
-      .catch(() => { login('User', '', null); navigate(getInitialPage()) })
+      .catch(() => { setError('Login link expired or invalid.') })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

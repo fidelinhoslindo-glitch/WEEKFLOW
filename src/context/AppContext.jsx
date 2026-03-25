@@ -316,6 +316,12 @@ export function AppProvider({ children }) {
   const [page, setPage] = useState(() => {
     const urlPage = getPageFromUrl()
     if (urlPage === 'admin') return 'admin'
+    
+    // Auth Guard
+    const PUBLIC_PAGES = ['landing', 'login', 'faq', 'download', 'share']
+    const isPublic = !urlPage || PUBLIC_PAGES.includes(urlPage)
+    if (!load(LS.AUTH, false) && !isPublic) return 'landing'
+
     if (urlPage) return urlPage
     if (!load(LS.AUTH, false)) return 'landing'
     const ob = load(LS.ONBOARD, {})
@@ -352,6 +358,12 @@ export function AppProvider({ children }) {
     }
     const onPop = (e) => {
       const pg = e.state?.page || getPageFromUrl() || 'landing'
+      // Guard: if not logged in, don't allow internal pages from history
+      const PUBLIC_PAGES = ['landing', 'login', 'faq', 'download', 'share']
+      if (!load(LS.AUTH, false) && !PUBLIC_PAGES.includes(pg)) {
+        setPage('landing')
+        return
+      }
       setPage(pg)
     }
     window.addEventListener('popstate', onPop)
