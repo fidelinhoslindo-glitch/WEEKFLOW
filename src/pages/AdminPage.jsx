@@ -110,16 +110,55 @@ export default function AdminPage() {
   async function loadUsers() {
     setLoading(true)
     try {
-      const data = await sbFetch('profiles?select=*&order=created_at.desc')
-      setUsers(Array.isArray(data) ? data : [])
-      const pro  = data.filter(u => u.plan === 'Pro').length
-      const biz  = data.filter(u => u.plan === 'Business').length
-      const thisMonth = data.filter(u => {
+      // 1. Fetch all users from Supabase Auth Admin API (has email, metadata)
+      const authKey = SB_SERVICE || SB_KEY
+      const authRes = await fetch(`${SB_URL}/auth/v1/admin/users?per_page=1000`, {
+        headers: {
+          'apikey': authKey,
+          'Authorization': `Bearer ${authKey}`,
+        },
+      })
+      if (!authRes.ok) {
+        const errText = await authRes.text()
+        throw new Error(`Auth API ${authRes.status}: ${errText}`)
+      }
+      const authData = await authRes.json()
+      const authUsers = Array.isArray(authData) ? authData : (authData.users || [])
+
+      // 2. Fetch profiles table (has plan, avatar_color, etc.)
+      let profiles = []
+      try {
+        profiles = await sbFetch('profiles?select=*')
+        if (!Array.isArray(profiles)) profiles = []
+      } catch { /* profiles table might not exist yet */ }
+
+      // 3. Merge: auth users + profile data
+      const profileMap = {}
+      profiles.forEach(p => { profileMap[p.id] = p })
+
+      const merged = authUsers.map(u => {
+        const profile = profileMap[u.id] || {}
+        return {
+          id: u.id,
+          email: u.email || '',
+          name: u.user_metadata?.name || u.user_metadata?.full_name || profile.name || '',
+          plan: profile.plan || 'Free',
+          avatar_color: profile.avatar_color || '#6467f2',
+          created_at: u.created_at || profile.created_at || '',
+          last_sign_in: u.last_sign_in_at || '',
+          provider: u.app_metadata?.provider || 'email',
+        }
+      })
+
+      setUsers(merged)
+      const pro  = merged.filter(u => u.plan === 'Pro').length
+      const biz  = merged.filter(u => u.plan === 'Business').length
+      const thisMonth = merged.filter(u => {
         const d = new Date(u.created_at)
         const now = new Date()
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
       }).length
-      setStats({ total: data.length, pro, business: biz, free: data.length - pro - biz, thisMonth })
+      setStats({ total: merged.length, pro, business: biz, free: merged.length - pro - biz, thisMonth })
     } catch(e) {
       console.error('Admin loadUsers error:', e)
       pushToast(`Could not load users: ${e.message || 'Check Supabase connection.'}`, 'error')
@@ -131,9 +170,11 @@ export default function AdminPage() {
   async function setPlan(userId, plan) {
     setUpdating(userId)
     try {
-      await sbFetch(`profiles?id=eq.${userId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ plan }),
+      // Upsert profile — creates row if it doesn't exist
+      await sbFetch(`profiles?on_conflict=id`, {
+        method: 'POST',
+        body: JSON.stringify({ id: userId, plan }),
+        headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
       })
       setUsers(u => u.map(x => x.id === userId ? { ...x, plan } : x))
       // Recalculate stats after plan change
@@ -152,7 +193,7 @@ export default function AdminPage() {
       })
       pushToast(`Plan updated to ${plan}!`, 'success')
     } catch(e) {
-      pushToast('Failed to update plan.', 'error')
+      pushToast(`Failed to update plan: ${e.message}`, 'error')
     } finally {
       setUpdating(null)
     }
