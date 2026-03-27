@@ -337,7 +337,7 @@ export default function FlowCirclePage() {
           headers: { 'Content-Type':'application/json', 'apikey': insertKey, 'Authorization': `Bearer ${insertKey}`, 'Prefer': 'return=minimal' },
           body: JSON.stringify({ circle_id:circle.id, circle_name:circle.name, inviter_name:user?.name||'Someone', email:inviteEmail.trim(), status:'pending', created_at:new Date().toISOString() })
         })
-        if (!invRes.ok) { const e=await invRes.json().catch(()=>({})); throw new Error(`[url:${url?.slice(0,30)}][key:${insertKey?.slice(0,20)}] ${e.message||e.hint||JSON.stringify(e)||`HTTP ${invRes.status}`}`) }
+        if (!invRes.ok) { const e=await invRes.json().catch(()=>({})); throw new Error(`[role:${insertKey?.slice(100,115)}] ${e.message||e.hint||JSON.stringify(e)||`HTTP ${invRes.status}`}`) }
         // Add notification for inviter
         setNotifications(prev=>[{id:Date.now(),text:`📤 Invite sent to ${inviteEmail.trim()} for "${circle.name}"`,time:'just now',read:false},...prev.slice(0,9)])
         sendPushNotification('Invite Sent',`Invite sent to ${inviteEmail.trim()}`)
