@@ -300,10 +300,14 @@ export function AppProvider({ children }) {
   const isElectron = typeof window !== 'undefined' && !!window.electron
 
   const getPageFromUrl = () => {
-    // Stripe checkout return — redirect to checkout page
     const params = new URLSearchParams(window.location.search)
+    // Stripe checkout return
     if (params.get('checkout') === 'success' || params.get('checkout') === 'canceled') {
       return 'checkout'
+    }
+    // Join-circle invite link
+    if (params.get('join-circle')) {
+      return 'flowcircle'
     }
     if (isElectron) {
       const hash = window.location.hash.replace('#', '')
@@ -336,6 +340,19 @@ export function AppProvider({ children }) {
   const [showSearch,  setShowSearch]  = useState(false)
   const [confetti,    setConfetti]    = useState(false)
   const [showAIChat,  setShowAIChat]  = useState(false)
+  const [pendingCircleInvite, setPendingCircleInvite] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const encoded = params.get('join-circle')
+      if (!encoded) return null
+      const data = JSON.parse(atob(encoded))
+      // Clean URL
+      const url = new URL(window.location.href)
+      url.searchParams.delete('join-circle')
+      window.history.replaceState({}, '', url.pathname + url.search)
+      return data
+    } catch { return null }
+  })
 
   const setDarkMode = (v) => { setDarkModeRaw(v); save(LS.DARK,v) }
   const navigate    = (to) => {
@@ -622,6 +639,8 @@ export function AppProvider({ children }) {
       // notifications
       notifications, setNotifications, toasts, pushToast, dismissToast,
       requestPushPermission, sendPushNotification,
+      // flowcircle invite
+      pendingCircleInvite, setPendingCircleInvite,
       // misc
       confetti, setConfetti,
       categoryColors,
