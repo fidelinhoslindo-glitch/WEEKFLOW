@@ -87,7 +87,8 @@ function Header({ title, subtitle }) {
                 {notifications.length === 0 ? (
                   <div className="py-8 text-center text-slate-400 text-sm">{t.header.noNotifications}</div>
                 ) : notifications.map(n => (
-                  <div key={n.id} className={`flex items-start gap-3 p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-50 dark:border-slate-800/50 last:border-0 ${!n.read ? 'bg-primary/5' : ''}`}>
+                  <div key={n.id} onClick={() => { if(n.circleInvite){ setShowNotifs(false); navigate('flowcircle') } setNotifications(prev=>prev.map(x=>x.id===n.id?{...x,read:true}:x)) }}
+                    className={`flex items-start gap-3 p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-50 dark:border-slate-800/50 last:border-0 cursor-pointer ${!n.read ? 'bg-primary/5' : ''}`}>
                     <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.read ? 'bg-slate-300' : 'bg-primary'}`} />
                     <div className="flex-1">
                       <p className="text-sm font-medium leading-snug">{n.text}</p>
@@ -97,7 +98,7 @@ function Header({ title, subtitle }) {
                 ))}
               </div>
               <div className="p-3 border-t border-slate-100 dark:border-slate-800">
-                <button onClick={() => { setShowNotifs(false); pushToast('Notification settings coming soon!', 'info') }}
+                <button onClick={() => { setShowNotifs(false); navigate('settings') }}
                   className="w-full text-xs font-semibold text-primary hover:bg-primary/5 py-2 rounded-lg transition-colors">
                   {t.header.notificationSettings}
                 </button>

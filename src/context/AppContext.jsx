@@ -570,7 +570,7 @@ export function AppProvider({ children }) {
     const check = async () => {
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/circle_invites?email=eq.${encodeURIComponent(user.email)}&status=eq.pending&select=*`, {
-          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${sbToken}` }
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
         })
         if (!res.ok) return
         const invites = await res.json()
