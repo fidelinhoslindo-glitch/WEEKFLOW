@@ -585,7 +585,7 @@ export function AppProvider({ children }) {
           })
           sendPushNotification('FlowCircle Invite', `You have ${invites.length} pending circle invite(s)!`)
         }
-      } catch {}
+      } catch(err) { console.error('[invite-check] error:', err) }
     }
     check()
     const iv = setInterval(check, 30000) // re-check every 30s
