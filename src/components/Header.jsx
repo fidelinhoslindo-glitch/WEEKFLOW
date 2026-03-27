@@ -164,36 +164,62 @@ function Header({ title, subtitle }) {
 
       {/* Circle Invite Modal */}
       {inviteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
-            <div className="text-center mb-5">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl mx-auto mb-3">🔵</div>
-              <h3 className="font-black text-lg">Você foi convidado!</h3>
-              <p className="text-sm text-slate-500 mt-1">
-                <span className="font-bold text-slate-700 dark:text-slate-200">{inviteModal.invite.inviter_name}</span> te convidou para entrar em
-              </p>
-              <p className="font-black text-xl text-primary mt-1">"{inviteModal.invite.circle_name}"</p>
-            </div>
-            {loadingInvite ? (
-              <div className="text-center text-sm text-slate-400 mb-4">Carregando membros...</div>
-            ) : inviteModal.members.length > 0 && (
-              <div className="mb-5">
-                <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Membros ({inviteModal.members.length})</p>
-                <div className="flex flex-wrap gap-2">
-                  {inviteModal.members.map((m, i) => (
-                    <div key={i} className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 rounded-xl px-2.5 py-1.5">
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: m.avatar || '#6467f2' }}>
-                        {(m.name||'?').charAt(0).toUpperCase()}
-                      </div>
-                      <span className="text-xs font-semibold">{m.name}</span>
-                    </div>
-                  ))}
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-slate-950/60 backdrop-blur-sm">
+          <div className="w-full sm:max-w-sm bg-white dark:bg-slate-900 sm:rounded-2xl rounded-t-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            {/* Top gradient banner */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-primary via-purple-500 to-pink-500" />
+
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-start gap-4 mb-5">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 shadow-lg"
+                  style={{ background: 'linear-gradient(135deg, #6467f2, #8b5cf6)' }}>
+                  🔵
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-widest text-primary mb-0.5">Convite para Circle</p>
+                  <h3 className="font-black text-lg leading-tight text-slate-900 dark:text-white truncate">"{inviteModal.invite.circle_name}"</h3>
+                  <p className="text-sm text-slate-500 mt-0.5">
+                    Convidado por <span className="font-semibold text-slate-700 dark:text-slate-300">{inviteModal.invite.inviter_name}</span>
+                  </p>
                 </div>
               </div>
-            )}
-            <div className="flex gap-3">
-              <button onClick={declineInvite} className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800">Recusar</button>
-              <button onClick={acceptInvite} className="flex-1 py-3 rounded-xl bg-primary text-white text-sm font-bold hover:opacity-90">Aceitar</button>
+
+              {/* Members */}
+              {loadingInvite ? (
+                <div className="flex items-center gap-2 text-sm text-slate-400 mb-5 bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
+                  <span className="material-symbols-outlined text-sm animate-spin">refresh</span>
+                  Carregando membros...
+                </div>
+              ) : inviteModal.members.length > 0 && (
+                <div className="mb-5 bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2.5">{inviteModal.members.length} {inviteModal.members.length === 1 ? 'membro' : 'membros'}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {inviteModal.members.map((m, i) => (
+                      <div key={i} className="flex items-center gap-1.5 bg-white dark:bg-slate-700 rounded-xl px-2.5 py-1.5 shadow-sm border border-slate-100 dark:border-slate-600">
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0"
+                          style={{ backgroundColor: m.avatar || '#6467f2' }}>
+                          {(m.name||'?').charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{m.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button onClick={declineInvite}
+                  className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  Recusar
+                </button>
+                <button onClick={acceptInvite}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold text-white shadow-lg shadow-primary/30 hover:opacity-90 transition-opacity"
+                  style={{ background: 'linear-gradient(135deg, #6467f2, #8b5cf6)' }}>
+                  Aceitar convite
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -204,6 +204,9 @@ export default function FlowCirclePage() {
   const [newEvTitle,setNewEvTitle]   = useState('')
   const [showEvModal,setShowEvModal] = useState(false)
   const [showJoin,setShowJoin]       = useState(!!pendingCircleInvite)
+
+  // Detect when pendingCircleInvite arrives (e.g. user accepted from Header modal)
+  useEffect(()=>{ if(pendingCircleInvite) setShowJoin(true) },[pendingCircleInvite])
   const [showCircleList,setShowCircleList] = useState(false) // mobile sidebar toggle
   const [evForm,setEvForm]           = useState({ title:'', date: new Date().toISOString().split('T')[0], time:'18:00', duration:60, color:'#6467f2', emoji:'📅', note:'', image:null, pinned:false })
 
