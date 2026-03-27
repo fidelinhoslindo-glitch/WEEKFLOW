@@ -18,22 +18,31 @@ function Header({ title, subtitle }) {
     setShowNotifs(false)
     setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))
     setLoadingInvite(true)
-    setInviteModal({ invite: n.circleInvite, notifId: n.id, members: [] })
+    setInviteModal({ invite: n.circleInvite, notifId: n.id, members: [], circleMode: null })
     let members = []
+    let circleMode = null
     try {
       const { url, key } = getSupabaseCredentials()
-      const res = await fetch(`${url}/rest/v1/circle_members?circle_id=eq.${n.circleInvite.circle_id}&select=*`, {
-        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
-      })
-      if (res.ok) members = await res.json() || []
+      const [mRes, cRes] = await Promise.all([
+        fetch(`${url}/rest/v1/circle_members?circle_id=eq.${n.circleInvite.circle_id}&select=*`, { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } }),
+        fetch(`${url}/rest/v1/circles?id=eq.${n.circleInvite.circle_id}&select=mode,color`, { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } })
+      ])
+      if (mRes.ok) members = await mRes.json() || []
+      if (cRes.ok) { const cd = await cRes.json(); circleMode = cd[0]?.mode || null }
     } catch {}
     setLoadingInvite(false)
-    setInviteModal(prev => prev ? { ...prev, members } : null)
+    setInviteModal(prev => prev ? { ...prev, members, circleMode } : null)
   }
 
   const acceptInvite = () => {
     if (!inviteModal) return
-    setPendingCircleInvite(inviteModal.invite)
+    // Normalize fields so joinCircle in FlowCirclePage can use them
+    setPendingCircleInvite({
+      ...inviteModal.invite,
+      circleId: inviteModal.invite.circle_id,
+      circleName: inviteModal.invite.circle_name,
+      mode: inviteModal.circleMode || 'friends',
+    })
     navigate('flowcircle')
     setNotifications(prev => prev.filter(x => x.id !== inviteModal.notifId))
     setInviteModal(null)
@@ -163,67 +172,72 @@ function Header({ title, subtitle }) {
       </header>
 
       {/* Circle Invite Modal */}
-      {inviteModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-slate-950/60 backdrop-blur-sm">
-          <div className="w-full sm:max-w-sm bg-white dark:bg-slate-900 sm:rounded-2xl rounded-t-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-            {/* Top gradient banner */}
-            <div className="h-1.5 w-full bg-gradient-to-r from-primary via-purple-500 to-pink-500" />
+      {inviteModal && (() => {
+        const MODES = { couple:'💑', friends:'👥', family:'👨‍👩‍👧‍👦', company:'🏢' }
+        const modeIcon = MODES[inviteModal.circleMode] || '🔵'
+        const members = inviteModal.members
+        const shown = members.slice(0, 3)
+        const extra = members.length - 3
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-slate-950/60 backdrop-blur-sm">
+            <div className="w-full sm:max-w-sm bg-white dark:bg-slate-900 sm:rounded-2xl rounded-t-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+              <div className="h-1.5 w-full bg-gradient-to-r from-primary via-purple-500 to-pink-500" />
 
-            <div className="p-6">
-              {/* Header */}
-              <div className="flex items-start gap-4 mb-5">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 shadow-lg"
+              <div className="p-6 text-center">
+                {/* Mode icon */}
+                <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4 shadow-lg"
                   style={{ background: 'linear-gradient(135deg, #6467f2, #8b5cf6)' }}>
-                  🔵
+                  {modeIcon}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-widest text-primary mb-0.5">Convite para Circle</p>
-                  <h3 className="font-black text-lg leading-tight text-slate-900 dark:text-white truncate">"{inviteModal.invite.circle_name}"</h3>
-                  <p className="text-sm text-slate-500 mt-0.5">
-                    Convidado por <span className="font-semibold text-slate-700 dark:text-slate-300">{inviteModal.invite.inviter_name}</span>
-                  </p>
-                </div>
-              </div>
 
-              {/* Members */}
-              {loadingInvite ? (
-                <div className="flex items-center gap-2 text-sm text-slate-400 mb-5 bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
-                  <span className="material-symbols-outlined text-sm animate-spin">refresh</span>
-                  Carregando membros...
-                </div>
-              ) : inviteModal.members.length > 0 && (
-                <div className="mb-5 bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2.5">{inviteModal.members.length} {inviteModal.members.length === 1 ? 'membro' : 'membros'}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {inviteModal.members.map((m, i) => (
-                      <div key={i} className="flex items-center gap-1.5 bg-white dark:bg-slate-700 rounded-xl px-2.5 py-1.5 shadow-sm border border-slate-100 dark:border-slate-600">
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0"
-                          style={{ backgroundColor: m.avatar || '#6467f2' }}>
-                          {(m.name||'?').charAt(0).toUpperCase()}
-                        </div>
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{m.name}</span>
+                {/* Inviter */}
+                <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1">Convite para Circle</p>
+                <p className="text-sm text-slate-500">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">{inviteModal.invite.inviter_name}</span> te convidou para
+                </p>
+                <h3 className="font-black text-xl text-slate-900 dark:text-white mt-0.5 mb-5">"{inviteModal.invite.circle_name}"</h3>
+
+                {/* Members avatars */}
+                {loadingInvite ? (
+                  <div className="flex items-center justify-center gap-2 text-sm text-slate-400 mb-5">
+                    <span className="material-symbols-outlined text-sm animate-spin">refresh</span>
+                    Carregando...
+                  </div>
+                ) : members.length > 0 && (
+                  <div className="flex items-center justify-center mb-5 gap-1">
+                    {shown.map((m, i) => (
+                      <div key={i} title={m.name}
+                        className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center text-white text-sm font-black shadow-md -ml-2 first:ml-0"
+                        style={{ backgroundColor: m.avatar || '#6467f2', zIndex: shown.length - i }}>
+                        {(m.name||'?').charAt(0).toUpperCase()}
                       </div>
                     ))}
+                    {extra > 0 && (
+                      <div className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-900 bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-black text-slate-600 dark:text-slate-300 shadow-md -ml-2">
+                        +{extra}
+                      </div>
+                    )}
+                    <span className="ml-3 text-xs text-slate-400 font-medium">{members.length} {members.length === 1 ? 'membro' : 'membros'}</span>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Actions */}
-              <div className="flex gap-3">
-                <button onClick={declineInvite}
-                  className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  Recusar
-                </button>
-                <button onClick={acceptInvite}
-                  className="flex-1 py-3 rounded-xl text-sm font-bold text-white shadow-lg shadow-primary/30 hover:opacity-90 transition-opacity"
-                  style={{ background: 'linear-gradient(135deg, #6467f2, #8b5cf6)' }}>
-                  Aceitar convite
-                </button>
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button onClick={declineInvite}
+                    className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    Recusar
+                  </button>
+                  <button onClick={acceptInvite}
+                    className="flex-1 py-3 rounded-xl text-sm font-bold text-white shadow-lg shadow-primary/30 hover:opacity-90 transition-opacity"
+                    style={{ background: 'linear-gradient(135deg, #6467f2, #8b5cf6)' }}>
+                    Aceitar convite
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </>
   )
 }
