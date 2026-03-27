@@ -327,7 +327,14 @@ export default function FlowCirclePage() {
     if(isSupabaseConfigured()&&sbToken){
       // Store invite in Supabase — invitee will see it as notification
       try {
-        await sb.circles.invite(sbToken,{circle_id:circle.id,circle_name:circle.name,inviter_name:user?.name||'Someone',email:inviteEmail.trim(),status:'pending',created_at:new Date().toISOString()})
+        // Use anon key for insert so JWT expiry doesn't block invites
+        const { url, key } = getSupabaseCredentials()
+        const invRes = await fetch(`${url}/rest/v1/circle_invites`, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', 'apikey': key, 'Authorization': `Bearer ${key}`, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ circle_id:circle.id, circle_name:circle.name, inviter_name:user?.name||'Someone', email:inviteEmail.trim(), status:'pending', created_at:new Date().toISOString() })
+        })
+        if (!invRes.ok) { const e=await invRes.json().catch(()=>({})); throw new Error(e.message||`HTTP ${invRes.status}`) }
         // Add notification for inviter
         setNotifications(prev=>[{id:Date.now(),text:`📤 Invite sent to ${inviteEmail.trim()} for "${circle.name}"`,time:'just now',read:false},...prev.slice(0,9)])
         sendPushNotification('Invite Sent',`Invite sent to ${inviteEmail.trim()}`)
