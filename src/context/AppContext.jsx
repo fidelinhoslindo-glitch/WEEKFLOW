@@ -564,6 +564,32 @@ export function AppProvider({ children }) {
     return () => clearInterval(iv)
   }, [pushToast, sendPushNotification])
 
+  // ── Check for pending circle invites (global) ────────────────────────────
+  useEffect(() => {
+    if (!SUPABASE_ENABLED || !sbToken || !user?.email) return
+    const check = async () => {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/circle_invites?email=eq.${encodeURIComponent(user.email)}&status=eq.pending&select=*`, {
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${sbToken}` }
+        })
+        if (!res.ok) return
+        const invites = await res.json()
+        if (invites?.length) {
+          invites.forEach(inv => {
+            setNotifications(prev => {
+              if (prev.some(n => n.inviteId === inv.id)) return prev
+              return [{ id: Date.now() + Math.random(), text: `📩 ${inv.inviter_name} invited you to "${inv.circle_name}"`, time: 'just now', read: false, inviteId: inv.id, circleInvite: inv }, ...prev.slice(0, 9)]
+            })
+          })
+          sendPushNotification('FlowCircle Invite', `You have ${invites.length} pending circle invite(s)!`)
+        }
+      } catch {}
+    }
+    check()
+    const iv = setInterval(check, 30000) // re-check every 30s
+    return () => clearInterval(iv)
+  }, [sbToken, user?.email, sendPushNotification])
+
   // Confetti when all today's tasks done
   useEffect(() => {
     const dayMap = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']

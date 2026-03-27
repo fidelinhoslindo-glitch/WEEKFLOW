@@ -218,29 +218,7 @@ export default function FlowCirclePage() {
     sb.circles.list(sbToken).then(cc=>{if(cc?.length>0)persist([...loadCircles().filter(c=>c.id.startsWith('circle_demo_')),...cc])}).catch(()=>{}).finally(()=>setSyncing(false))
   },[sbToken])
 
-  // ── Check for pending invites (notifications) on load ──
-  useEffect(()=>{
-    if(!isSupabaseConfigured()||!sbToken||!user?.email)return
-    // Check if there are pending invites for this user's email
-    const checkInvites = async()=>{
-      try{
-        const res = await fetch(`${getSupabaseCredentials().url}/rest/v1/circle_invites?email=eq.${encodeURIComponent(user.email)}&status=eq.pending&select=*`,{
-          headers:{'apikey':getSupabaseCredentials().key,'Authorization':`Bearer ${sbToken}`}
-        })
-        if(!res.ok)return
-        const invites = await res.json()
-        if(invites?.length){
-          invites.forEach(inv=>{
-            setNotifications(prev=>{
-              if(prev.some(n=>n.inviteId===inv.id))return prev
-              return[{id:Date.now()+Math.random(),text:`📩 ${inv.inviter_name} invited you to "${inv.circle_name}"`,time:'just now',read:false,inviteId:inv.id,circleInvite:inv},...prev.slice(0,9)]
-            })
-          })
-        }
-      }catch{}
-    }
-    checkInvites()
-  },[sbToken,user?.email])
+  // Invite check moved to AppContext (global — works on any page)
 
   // ── Handle join-circle link ──
   const joinCircle = (invite)=>{
