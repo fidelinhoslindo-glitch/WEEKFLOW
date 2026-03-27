@@ -327,11 +327,14 @@ export default function FlowCirclePage() {
     if(isSupabaseConfigured()&&sbToken){
       // Store invite in Supabase — invitee will see it as notification
       try {
-        // Use anon key for insert so JWT expiry doesn't block invites
-        const { url, key } = getSupabaseCredentials()
+        // Use service role key to bypass RLS for cross-user invite insert
+        const { url } = getSupabaseCredentials()
+        const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || ''
+        const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+        const insertKey = serviceKey || anonKey
         const invRes = await fetch(`${url}/rest/v1/circle_invites`, {
           method: 'POST',
-          headers: { 'Content-Type':'application/json', 'apikey': key, 'Authorization': `Bearer ${key}`, 'Prefer': 'return=minimal' },
+          headers: { 'Content-Type':'application/json', 'apikey': insertKey, 'Authorization': `Bearer ${insertKey}`, 'Prefer': 'return=minimal' },
           body: JSON.stringify({ circle_id:circle.id, circle_name:circle.name, inviter_name:user?.name||'Someone', email:inviteEmail.trim(), status:'pending', created_at:new Date().toISOString() })
         })
         if (!invRes.ok) { const e=await invRes.json().catch(()=>({})); throw new Error(e.message||`HTTP ${invRes.status}`) }
