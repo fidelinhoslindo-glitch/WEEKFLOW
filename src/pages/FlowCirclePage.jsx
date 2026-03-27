@@ -221,34 +221,50 @@ export default function FlowCirclePage() {
   // Invite check moved to AppContext (global — works on any page)
 
   // ── Handle join-circle link ──
-  const joinCircle = (invite)=>{
+  const joinCircle = async(invite)=>{
     const existing = circles.find(c=>c.id===invite.circleId)
     if(existing){
       setActiveId(existing.id)
       pushToast('You are already in this circle!','info')
       return
     }
+    // Fetch real circle data + members + events from Supabase
+    let circleData = null
+    let members = []
+    let events = []
+    if(isSupabaseConfigured()&&sbToken){
+      try {
+        const { url, key } = getSupabaseCredentials()
+        const [cRes, mRes, eRes] = await Promise.all([
+          fetch(`${url}/rest/v1/circles?id=eq.${invite.circleId}&select=*`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}}),
+          fetch(`${url}/rest/v1/circle_members?circle_id=eq.${invite.circleId}&select=*`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}}),
+          fetch(`${url}/rest/v1/circle_events?circle_id=eq.${invite.circleId}&select=*`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}})
+        ])
+        if(cRes.ok) { const d=await cRes.json(); circleData=d[0]||null }
+        if(mRes.ok) members = await mRes.json() || []
+        if(eRes.ok) events  = await eRes.json() || []
+      } catch {}
+    }
     const nc={
       id:invite.circleId,
-      mode:invite.mode||'friends',
-      name:invite.circleName,
-      color:'#6467f2',
-      members:[{id:userId||'me',name:user?.name||'You',role:'member',avatar:user?.avatarColor||'#6467f2',status:'online'}],
-      events:[],
-      createdAt:new Date().toISOString()
+      mode:circleData?.mode||invite.mode||'friends',
+      name:circleData?.name||invite.circleName,
+      color:circleData?.color||'#6467f2',
+      members,
+      events,
+      createdAt:circleData?.created_at||new Date().toISOString()
     }
     persist([...circles,nc])
     setActiveId(nc.id)
-    // Sync to Supabase
+    // Add self as member in Supabase
     if(isSupabaseConfigured()&&sbToken&&userId){
       sb.circles.addMember(sbToken,{circle_id:nc.id,user_id:userId,name:user?.name||'You',role:'member',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch(()=>{})
-    }
-    // Notify inviter via Supabase
-    if(isSupabaseConfigured()&&sbToken){
-      fetch(`${getSupabaseCredentials().url}/rest/v1/circle_invites`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json','apikey':getSupabaseCredentials().key,'Authorization':`Bearer ${sbToken}`,'Prefer':'return=minimal'},
-        body:JSON.stringify({circle_id:nc.id,circle_name:nc.name,inviter_name:user?.name||'Someone',email:'system',status:'accepted_notification',created_at:new Date().toISOString()})
+      // Mark invite as accepted
+      const { url, key } = getSupabaseCredentials()
+      fetch(`${url}/rest/v1/circle_invites?circle_id=eq.${nc.id}&email=eq.${encodeURIComponent(user?.email||'')}`,{
+        method:'PATCH',
+        headers:{'Content-Type':'application/json','apikey':key,'Authorization':`Bearer ${sbToken}`},
+        body:JSON.stringify({status:'accepted'})
       }).catch(()=>{})
     }
     pushToast(`🎉 You joined "${nc.name}"!`,'success')
