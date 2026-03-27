@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { SUPABASE_ENABLED, sb, supabaseSignIn, supabaseSignUp, supabaseSignOut, isSupabaseConfigured } from '../utils/supabase'
+import { SUPABASE_ENABLED, sb, supabaseSignIn, supabaseSignUp, supabaseSignOut, isSupabaseConfigured, getSupabaseCredentials } from '../utils/supabase'
 import { TOAST_TIMEOUT, FREE_TASK_LIMIT, VALID_PAGES } from '../utils/constants'
 
 const AppContext = createContext(null)
@@ -570,8 +570,10 @@ export function AppProvider({ children }) {
     if (!SUPABASE_ENABLED || !sbToken || !user?.email) return
     const check = async () => {
       try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/circle_invites?email=eq.${encodeURIComponent(user.email)}&status=eq.pending&select=*`, {
-          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+        const { url: sbUrl, key: sbKey } = getSupabaseCredentials()
+        if (!sbUrl || !sbKey) return
+        const res = await fetch(`${sbUrl}/rest/v1/circle_invites?email=eq.${encodeURIComponent(user.email)}&status=eq.pending&select=*`, {
+          headers: { 'apikey': sbKey, 'Authorization': `Bearer ${sbKey}` }
         })
         const text = await res.text()
         console.log('[invite-check] status:', res.status, 'body:', text.slice(0,200))
