@@ -573,8 +573,10 @@ export function AppProvider({ children }) {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/circle_invites?email=eq.${encodeURIComponent(user.email)}&status=eq.pending&select=*`, {
           headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
         })
-        if (!res.ok) { console.warn('[invite-check] failed:', res.status, await res.text().catch(()=>'')); return }
-        const invites = await res.json()
+        const text = await res.text()
+        console.log('[invite-check] status:', res.status, 'body:', text.slice(0,200))
+        if (!res.ok) return
+        const invites = JSON.parse(text||'[]')
         console.log('[invite-check] found:', invites?.length, 'for', user.email)
         if (invites?.length) {
           invites.forEach(inv => {
