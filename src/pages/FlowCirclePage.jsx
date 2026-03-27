@@ -116,28 +116,6 @@ function CreateModal({ onClose, onCreate }) {
   )
 }
 
-function JoinModal({ invite, onJoin, onClose }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
-      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl mx-auto mb-4">
-          {CIRCLE_MODES[invite.mode]?.icon || '🔵'}
-        </div>
-        <h3 className="font-black text-lg mb-1">You've been invited!</h3>
-        <p className="text-sm text-slate-500 mb-6">
-          Join <span className="font-bold text-slate-700 dark:text-slate-200">{invite.circleName}</span>
-        </p>
-        <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold">Decline</button>
-          <button onClick={()=>{ onJoin(invite); onClose() }}
-            className="flex-1 py-3 rounded-xl bg-primary text-white text-sm font-bold hover:opacity-90">
-            Join Circle
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function EventCard({ ev, onDelete, onPin }) {
   const [expanded, setExpanded] = useState(false)
@@ -203,10 +181,6 @@ export default function FlowCirclePage() {
   const [syncing,setSyncing]         = useState(false)
   const [newEvTitle,setNewEvTitle]   = useState('')
   const [showEvModal,setShowEvModal] = useState(false)
-  const [showJoin,setShowJoin]       = useState(!!pendingCircleInvite)
-
-  // Detect when pendingCircleInvite arrives (e.g. user accepted from Header modal)
-  useEffect(()=>{ if(pendingCircleInvite) setShowJoin(true) },[pendingCircleInvite])
   const [showCircleList,setShowCircleList] = useState(false) // mobile sidebar toggle
   const [evForm,setEvForm]           = useState({ title:'', date: new Date().toISOString().split('T')[0], time:'18:00', duration:60, color:'#6467f2', emoji:'📅', note:'', image:null, pinned:false })
 
@@ -273,6 +247,9 @@ export default function FlowCirclePage() {
     pushToast(`🎉 You joined "${nc.name}"!`,'success')
     setPendingCircleInvite(null)
   }
+
+  // Auto-join when user accepts invite from Header modal (no second modal)
+  useEffect(()=>{ if(pendingCircleInvite) joinCircle(pendingCircleInvite) },[pendingCircleInvite]) // eslint-disable-line
 
   const createCircle = async(f)=>{
     const nc={...f,id:'circ_'+Date.now(),members:[{id:userId||'me',name:user?.name||'You',role:'admin',avatar:user?.avatarColor||'#6467f2',status:'online'}],events:[],createdAt:new Date().toISOString()}
@@ -635,7 +612,6 @@ export default function FlowCirclePage() {
       </div>
       {showCreate&&<CreateModal onClose={()=>setShowCreate(false)} onCreate={createCircle}/>}
       {showUpgrade&&<UpgradeModal feature="múltiplos FlowCircles" onClose={()=>setShowUpgrade(false)}/>}
-      {showJoin&&pendingCircleInvite&&<JoinModal invite={pendingCircleInvite} onJoin={joinCircle} onClose={()=>{setShowJoin(false);setPendingCircleInvite(null)}}/>}
 
       {/* ── New Event Modal ── */}
       {showEvModal&&circle&&(
