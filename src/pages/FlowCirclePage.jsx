@@ -192,8 +192,47 @@ export default function FlowCirclePage() {
   useEffect(()=>{
     if(!isSupabaseConfigured()||!sbToken)return
     setSyncing(true)
-    sb.circles.list(sbToken).then(cc=>{if(cc?.length>0)persist([...loadCircles().filter(c=>c.id.startsWith('circle_demo_')),...cc])}).catch(()=>{}).finally(()=>setSyncing(false))
-  },[sbToken])
+    const { url, key } = getSupabaseCredentials()
+    // Fetch circles owned by user AND circles joined as member
+    Promise.all([
+      sb.circles.list(sbToken),
+      // Get circle_ids where user is a member
+      fetch(`${url}/rest/v1/circle_members?user_id=eq.${userId}&select=circle_id`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}})
+        .then(r=>r.ok?r.json():[]).catch(()=>[])
+    ]).then(async([owned, memberships])=>{
+      const memberCircleIds = (memberships||[]).map(m=>m.circle_id).filter(Boolean)
+      // Fetch full data for circles where user is a member but not owner
+      const ownedIds = (owned||[]).map(c=>c.id)
+      const joinedIds = memberCircleIds.filter(id=>!ownedIds.includes(id))
+      let joined = []
+      if(joinedIds.length>0){
+        const results = await Promise.all(joinedIds.map(async cid=>{
+          const [cRes,mRes,eRes] = await Promise.all([
+            fetch(`${url}/rest/v1/circles?id=eq.${cid}&select=*`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}}),
+            fetch(`${url}/rest/v1/circle_members?circle_id=eq.${cid}&select=*`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}}),
+            fetch(`${url}/rest/v1/circle_events?circle_id=eq.${cid}&select=*&order=date.asc`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}})
+          ])
+          const cd = cRes.ok?(await cRes.json())[0]:null
+          const members = mRes.ok?await mRes.json():[]
+          const events = eRes.ok?await eRes.json():[]
+          return cd?{...cd,members,events}:null
+        }))
+        joined = results.filter(Boolean)
+      }
+      // For owned circles, also fetch their members+events
+      const ownedFull = await Promise.all((owned||[]).map(async c=>{
+        const [mRes,eRes] = await Promise.all([
+          fetch(`${url}/rest/v1/circle_members?circle_id=eq.${c.id}&select=*`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}}),
+          fetch(`${url}/rest/v1/circle_events?circle_id=eq.${c.id}&select=*&order=date.asc`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}})
+        ])
+        const members = mRes.ok?await mRes.json():[]
+        const events = eRes.ok?await eRes.json():[]
+        return {...c,members,events}
+      }))
+      const allCircles = [...ownedFull,...joined]
+      if(allCircles.length>0) persist([...loadCircles().filter(c=>c.id.startsWith('circle_demo_')),...allCircles])
+    }).catch(()=>{}).finally(()=>setSyncing(false))
+  },[sbToken,userId])
 
   // Invite check moved to AppContext (global — works on any page)
 
