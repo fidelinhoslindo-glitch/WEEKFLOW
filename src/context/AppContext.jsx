@@ -566,14 +566,16 @@ export function AppProvider({ children }) {
 
   // ── Check for pending circle invites (global) ────────────────────────────
   useEffect(() => {
+    console.log('[invite-check] enabled:', SUPABASE_ENABLED, 'token:', !!sbToken, 'email:', user?.email)
     if (!SUPABASE_ENABLED || !sbToken || !user?.email) return
     const check = async () => {
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/circle_invites?email=eq.${encodeURIComponent(user.email)}&status=eq.pending&select=*`, {
           headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
         })
-        if (!res.ok) return
+        if (!res.ok) { console.warn('[invite-check] failed:', res.status, await res.text().catch(()=>'')); return }
         const invites = await res.json()
+        console.log('[invite-check] found:', invites?.length, 'for', user.email)
         if (invites?.length) {
           invites.forEach(inv => {
             setNotifications(prev => {
