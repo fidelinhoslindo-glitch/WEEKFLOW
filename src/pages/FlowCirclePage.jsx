@@ -326,11 +326,16 @@ export default function FlowCirclePage() {
     setInviteLink(link)
     if(isSupabaseConfigured()&&sbToken){
       // Store invite in Supabase — invitee will see it as notification
-      await sb.circles.invite(sbToken,{circle_id:circle.id,circle_name:circle.name,inviter_name:user?.name||'Someone',email:inviteEmail.trim(),status:'pending',created_at:new Date().toISOString()}).catch(()=>{})
-      // Add notification for inviter
-      setNotifications(prev=>[{id:Date.now(),text:`📤 Invite sent to ${inviteEmail.trim()} for "${circle.name}"`,time:'just now',read:false},...prev.slice(0,9)])
-      sendPushNotification('Invite Sent',`Invite sent to ${inviteEmail.trim()}`)
-      pushToast(`📩 Invite sent to ${inviteEmail.trim()}!`,'success')
+      try {
+        await sb.circles.invite(sbToken,{circle_id:circle.id,circle_name:circle.name,inviter_name:user?.name||'Someone',email:inviteEmail.trim(),status:'pending',created_at:new Date().toISOString()})
+        // Add notification for inviter
+        setNotifications(prev=>[{id:Date.now(),text:`📤 Invite sent to ${inviteEmail.trim()} for "${circle.name}"`,time:'just now',read:false},...prev.slice(0,9)])
+        sendPushNotification('Invite Sent',`Invite sent to ${inviteEmail.trim()}`)
+        pushToast(`📩 Invite sent to ${inviteEmail.trim()}!`,'success')
+      } catch(err) {
+        console.error('Invite failed:',err)
+        pushToast(`❌ Invite failed: ${err.message}. Run the Setup SQL in Supabase first.`,'error')
+      }
     } else {
       pushToast('🔗 Share this link with your friend!','info')
     }

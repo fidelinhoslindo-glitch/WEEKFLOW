@@ -47,6 +47,67 @@ create table if not exists public.profiles (
 );
 alter table public.profiles enable row level security;
 create policy "own profile" on public.profiles for all using (auth.uid() = id);
+
+create table if not exists public.circles (
+  id text primary key,
+  owner_id uuid references auth.users(id) on delete cascade not null,
+  name text not null,
+  mode text default 'friends',
+  color text default '#6467f2',
+  created_at timestamptz default now()
+);
+alter table public.circles enable row level security;
+create policy "read circles" on public.circles for select using (true);
+create policy "own circles" on public.circles for all using (auth.uid() = owner_id);
+
+create table if not exists public.circle_members (
+  id bigserial primary key,
+  circle_id text references public.circles(id) on delete cascade not null,
+  user_id uuid,
+  name text,
+  role text default 'member',
+  avatar text,
+  status text default 'offline',
+  joined_at timestamptz default now()
+);
+alter table public.circle_members enable row level security;
+create policy "read circle members" on public.circle_members for select using (true);
+create policy "insert circle members" on public.circle_members for insert with check (true);
+
+create table if not exists public.circle_events (
+  id text primary key,
+  circle_id text references public.circles(id) on delete cascade not null,
+  title text not null,
+  date text,
+  time text default '18:00',
+  duration int default 60,
+  color text default '#6467f2',
+  emoji text default '📅',
+  note text default '',
+  image text,
+  pinned boolean default false,
+  shared boolean default true,
+  created_by text,
+  created_at timestamptz default now()
+);
+alter table public.circle_events enable row level security;
+create policy "read circle events" on public.circle_events for select using (true);
+create policy "insert circle events" on public.circle_events for insert with check (true);
+create policy "delete circle events" on public.circle_events for delete using (true);
+
+create table if not exists public.circle_invites (
+  id bigserial primary key,
+  circle_id text not null,
+  circle_name text not null,
+  inviter_name text,
+  email text not null,
+  status text default 'pending',
+  created_at timestamptz default now()
+);
+alter table public.circle_invites enable row level security;
+create policy "read invites by email" on public.circle_invites for select using (true);
+create policy "insert invites" on public.circle_invites for insert with check (true);
+create policy "update invites" on public.circle_invites for update using (true);
 `
 
 function headers(token) {
