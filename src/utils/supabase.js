@@ -57,13 +57,15 @@ create table if not exists public.circles (
   created_at timestamptz default now()
 );
 alter table public.circles enable row level security;
-create policy "read circles" on public.circles for select using (true);
-create policy "own circles" on public.circles for all using (auth.uid() = owner_id);
+create policy "circles_owner_all" on public.circles for all using (auth.uid() = owner_id);
+create policy "circles_member_read" on public.circles for select using (
+  exists (select 1 from public.circle_members cm where cm.circle_id = id and cm.user_id = auth.uid())
+);
 
 create table if not exists public.circle_members (
   id bigserial primary key,
   circle_id text references public.circles(id) on delete cascade not null,
-  user_id uuid,
+  user_id uuid references auth.users(id) on delete cascade,
   name text,
   role text default 'member',
   avatar text,
@@ -71,8 +73,14 @@ create table if not exists public.circle_members (
   joined_at timestamptz default now()
 );
 alter table public.circle_members enable row level security;
-create policy "read circle members" on public.circle_members for select using (true);
-create policy "insert circle members" on public.circle_members for insert with check (true);
+create policy "cm_member_read" on public.circle_members for select using (
+  exists (select 1 from public.circle_members me where me.circle_id = circle_id and me.user_id = auth.uid())
+);
+create policy "cm_self_insert" on public.circle_members for insert with check (auth.uid() = user_id);
+create policy "cm_self_update" on public.circle_members for update using (auth.uid() = user_id);
+create policy "cm_delete" on public.circle_members for delete using (
+  auth.uid() = user_id or exists (select 1 from public.circles c where c.id = circle_id and c.owner_id = auth.uid())
+);
 
 create table if not exists public.circle_events (
   id text primary key,
@@ -91,23 +99,39 @@ create table if not exists public.circle_events (
   created_at timestamptz default now()
 );
 alter table public.circle_events enable row level security;
-create policy "read circle events" on public.circle_events for select using (true);
-create policy "insert circle events" on public.circle_events for insert with check (true);
-create policy "delete circle events" on public.circle_events for delete using (true);
+create policy "ce_member_read" on public.circle_events for select using (
+  exists (select 1 from public.circle_members cm where cm.circle_id = circle_id and cm.user_id = auth.uid())
+);
+create policy "ce_member_insert" on public.circle_events for insert with check (
+  exists (select 1 from public.circle_members cm where cm.circle_id = circle_id and cm.user_id = auth.uid())
+);
+create policy "ce_member_delete" on public.circle_events for delete using (
+  exists (select 1 from public.circle_members cm where cm.circle_id = circle_id and cm.user_id = auth.uid())
+);
 
 create table if not exists public.circle_invites (
   id bigserial primary key,
   circle_id text not null,
   circle_name text not null,
+  circle_mode text,
   inviter_name text,
   email text not null,
   status text default 'pending',
   created_at timestamptz default now()
 );
 alter table public.circle_invites enable row level security;
-create policy "read invites by email" on public.circle_invites for select using (true);
-create policy "insert invites" on public.circle_invites for insert with check (true);
-create policy "update invites" on public.circle_invites for update using (true);
+create policy "invites_recipient_read" on public.circle_invites for select using (
+  email = (select email from auth.users where id = auth.uid())
+);
+create policy "invites_circle_member_read" on public.circle_invites for select using (
+  exists (select 1 from public.circle_members cm where cm.circle_id = circle_id and cm.user_id = auth.uid())
+);
+create policy "invites_member_insert" on public.circle_invites for insert with check (
+  exists (select 1 from public.circle_members cm where cm.circle_id = circle_id and cm.user_id = auth.uid())
+);
+create policy "invites_recipient_update" on public.circle_invites for update using (
+  email = (select email from auth.users where id = auth.uid())
+);
 `
 
 function headers(token) {

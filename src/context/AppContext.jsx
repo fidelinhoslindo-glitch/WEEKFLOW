@@ -578,8 +578,9 @@ export function AppProvider({ children }) {
       try {
         const { url: sbUrl, key: sbKey } = getSupabaseCredentials()
         if (!sbUrl || !sbKey) return
-        const res = await fetch(`${sbUrl}/rest/v1/circle_invites?email=eq.${encodeURIComponent(user.email)}&status=eq.pending&select=*`, {
-          headers: { 'apikey': sbKey, 'Authorization': `Bearer ${sbKey}` }
+        // Use user JWT so RLS can match auth email to invite email
+        const res = await fetch(`${sbUrl}/rest/v1/circle_invites?status=eq.pending&select=*`, {
+          headers: { 'apikey': sbKey, 'Authorization': `Bearer ${sbToken}` }
         })
         const text = await res.text()
         console.log('[invite-check] status:', res.status, 'body:', text.slice(0,200))

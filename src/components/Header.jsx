@@ -23,10 +23,10 @@ function Header({ title, subtitle }) {
     setLoadingInvite(true)
     let members = []
     try {
+      // User may not be a member yet, so this might return empty — that's expected
       const { url, key } = getSupabaseCredentials()
-      const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || key
       const userToken = localStorage.getItem('wf_token') || key
-      const mRes = await fetch(`${url}/rest/v1/circle_members?circle_id=eq.${n.circleInvite.circle_id}&select=*`, { headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${userToken}` } })
+      const mRes = await fetch(`${url}/rest/v1/circle_members?circle_id=eq.${n.circleInvite.circle_id}&select=*`, { headers: { 'apikey': key, 'Authorization': `Bearer ${userToken}` } })
       if (mRes.ok) members = await mRes.json() || []
     } catch {}
     setLoadingInvite(false)
@@ -51,9 +51,10 @@ function Header({ title, subtitle }) {
     if (!inviteModal) return
     try {
       const { url, key } = getSupabaseCredentials()
+      const userToken = localStorage.getItem('wf_token') || key
       await fetch(`${url}/rest/v1/circle_invites?id=eq.${inviteModal.invite.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'apikey': key, 'Authorization': `Bearer ${key}` },
+        headers: { 'Content-Type': 'application/json', 'apikey': key, 'Authorization': `Bearer ${userToken}` },
         body: JSON.stringify({ status: 'declined' })
       })
     } catch {}

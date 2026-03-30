@@ -196,45 +196,16 @@ export default function FlowCirclePage() {
   useEffect(()=>{
     if(!isSupabaseConfigured()||!sbToken||!userId)return
     setSyncing(true)
-    const { url, key } = getSupabaseCredentials()
-    const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || key
-    // Fetch circles owned by user AND circles joined as member
-    Promise.all([
-      sb.circles.list(sbToken),
-      // Get circle_ids where user is a member
-      fetch(`${url}/rest/v1/circle_members?user_id=eq.${userId}&select=circle_id`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}})
-        .then(r=>r.ok?r.json():[]).catch(()=>[])
-    ]).then(async([owned, memberships])=>{
-      const memberCircleIds = (memberships||[]).map(m=>m.circle_id).filter(Boolean)
-      // Fetch full data for circles where user is a member but not owner
-      const ownedIds = (owned||[]).map(c=>c.id)
-      const joinedIds = memberCircleIds.filter(id=>!ownedIds.includes(id))
-      let joined = []
-      if(joinedIds.length>0){
-        const results = await Promise.all(joinedIds.map(async cid=>{
-          const [cRes,mRes,eRes] = await Promise.all([
-            fetch(`${url}/rest/v1/circles?id=eq.${cid}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}}),
-            fetch(`${url}/rest/v1/circle_members?circle_id=eq.${cid}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}}),
-            fetch(`${url}/rest/v1/circle_events?circle_id=eq.${cid}&select=*&order=date.asc`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}})
-          ])
-          const cd = cRes.ok?(await cRes.json())[0]:null
-          const members = mRes.ok?await mRes.json():[]
-          const events = eRes.ok?await eRes.json():[]
-          return cd?{...cd,members,events}:null
-        }))
-        joined = results.filter(Boolean)
-      }
-      // For owned circles, also fetch their members+events
-      const ownedFull = await Promise.all((owned||[]).map(async c=>{
-        const [mRes,eRes] = await Promise.all([
-          fetch(`${url}/rest/v1/circle_members?circle_id=eq.${c.id}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}}),
-          fetch(`${url}/rest/v1/circle_events?circle_id=eq.${c.id}&select=*&order=date.asc`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}})
+    // RLS ensures user only sees circles they own or are a member of
+    sb.circles.list(sbToken).then(async(rawCircles)=>{
+      // For each circle, fetch members + events (RLS filters automatically)
+      const allCircles = await Promise.all((rawCircles||[]).map(async c=>{
+        const [members, events] = await Promise.all([
+          sb.circles.members(sbToken, c.id).catch(()=>[]),
+          sb.circles.events(sbToken, c.id).catch(()=>[])
         ])
-        const members = mRes.ok?await mRes.json():[]
-        const events = eRes.ok?await eRes.json():[]
         return {...c,members,events}
       }))
-      const allCircles = [...ownedFull,...joined]
       if(allCircles.length>0){
         const demos = loadCircles().filter(c=>c.id.startsWith('circle_demo_'))
         persist([...demos,...allCircles])
@@ -258,23 +229,32 @@ export default function FlowCirclePage() {
       pushToast('You are already in this circle!','info')
       return
     }
-    // Fetch real circle data + members + events from Supabase
+    // Step 1: Add self as member first (RLS allows inserting own user_id)
+    // After becoming a member, RLS grants read access to the circle
+    if(isSupabaseConfigured()&&sbToken&&userId){
+      await sb.circles.addMember(sbToken,{circle_id:invite.circleId,user_id:userId,name:user?.name||'You',role:'member',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch(()=>{})
+      // Mark invite as accepted (RLS allows recipient to update their own invites)
+      const { url, key } = getSupabaseCredentials()
+      await fetch(`${url}/rest/v1/circle_invites?circle_id=eq.${invite.circleId}&email=eq.${encodeURIComponent(user?.email||'')}`,{
+        method:'PATCH',
+        headers:{'Content-Type':'application/json','apikey':key,'Authorization':`Bearer ${sbToken}`},
+        body:JSON.stringify({status:'accepted'})
+      }).catch(()=>{})
+    }
+    // Step 2: Now fetch circle data (RLS allows since we're a member now)
     let circleData = null
     let members = []
     let events = []
     if(isSupabaseConfigured()&&sbToken){
       try {
-        const { url, key } = getSupabaseCredentials()
-        // Use service key to bypass RLS on circles table (invitee is not owner)
-        const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || key
-        const [cRes, mRes, eRes] = await Promise.all([
-          fetch(`${url}/rest/v1/circles?id=eq.${invite.circleId}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}}),
-          fetch(`${url}/rest/v1/circle_members?circle_id=eq.${invite.circleId}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}}),
-          fetch(`${url}/rest/v1/circle_events?circle_id=eq.${invite.circleId}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}})
+        const [cData, mData, eData] = await Promise.all([
+          sb.circles.list(sbToken).then(list=>list.find(c=>c.id===invite.circleId)||null),
+          sb.circles.members(sbToken, invite.circleId),
+          sb.circles.events(sbToken, invite.circleId)
         ])
-        if(cRes.ok) { const d=await cRes.json(); circleData=d[0]||null }
-        if(mRes.ok) members = await mRes.json() || []
-        if(eRes.ok) events  = await eRes.json() || []
+        circleData = cData
+        members = mData || []
+        events = eData || []
       } catch {}
     }
     const nc={
@@ -286,28 +266,13 @@ export default function FlowCirclePage() {
       events,
       createdAt:circleData?.created_at||new Date().toISOString()
     }
-    // Use functional updater to avoid stale closure over `circles`
     persist(prev => {
       if(prev.find(c=>c.id===nc.id)) return prev
       return [...prev, nc]
     })
     setActiveId(nc.id)
-    // Add self as member in Supabase then re-sync to get fresh data
-    if(isSupabaseConfigured()&&sbToken&&userId){
-      const { url, key } = getSupabaseCredentials()
-      const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || key
-      Promise.all([
-        sb.circles.addMember(sbToken,{circle_id:nc.id,user_id:userId,name:user?.name||'You',role:'member',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch(()=>{}),
-        fetch(`${url}/rest/v1/circle_invites?circle_id=eq.${nc.id}&email=eq.${encodeURIComponent(user?.email||'')}`,{
-          method:'PATCH',
-          headers:{'Content-Type':'application/json','apikey':serviceKey,'Authorization':`Bearer ${sbToken}`},
-          body:JSON.stringify({status:'accepted'})
-        }).catch(()=>{})
-      ]).then(()=>{
-        // Small delay to ensure DB write is committed before re-sync
-        setTimeout(()=>setSyncTrigger(t=>t+1), 800)
-      })
-    }
+    // Trigger re-sync to get fresh data
+    setTimeout(()=>setSyncTrigger(t=>t+1), 500)
     pushToast(`🎉 You joined "${nc.name}"!`,'success')
     setPendingCircleInvite(null)
   }
@@ -370,18 +335,9 @@ export default function FlowCirclePage() {
     setInviteLink(link)
     if(isSupabaseConfigured()&&sbToken){
       // Store invite in Supabase — invitee will see it as notification
+      // RLS allows circle members to insert invites for their circle
       try {
-        // Use service role key to bypass RLS for cross-user invite insert
-        const { url } = getSupabaseCredentials()
-        const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || ''
-        const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-        const insertKey = serviceKey || anonKey
-        const invRes = await fetch(`${url}/rest/v1/circle_invites`, {
-          method: 'POST',
-          headers: { 'Content-Type':'application/json', 'apikey': insertKey, 'Authorization': `Bearer ${insertKey}`, 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ circle_id:circle.id, circle_name:circle.name, circle_mode:circle.mode, inviter_name:user?.name||'Someone', email:inviteEmail.trim(), status:'pending', created_at:new Date().toISOString() })
-        })
-        if (!invRes.ok) { const e=await invRes.json().catch(()=>({})); throw new Error(`[role:${insertKey?.slice(100,115)}] ${e.message||e.hint||JSON.stringify(e)||`HTTP ${invRes.status}`}`) }
+        await sb.circles.invite(sbToken, { circle_id:circle.id, circle_name:circle.name, circle_mode:circle.mode, inviter_name:user?.name||'Someone', email:inviteEmail.trim(), status:'pending', created_at:new Date().toISOString() })
         // Add notification for inviter
         setNotifications(prev=>[{id:Date.now(),text:`📤 Invite sent to ${inviteEmail.trim()} for "${circle.name}"`,time:'just now',read:false},...prev.slice(0,9)])
         sendPushNotification('Invite Sent',`Invite sent to ${inviteEmail.trim()}`)

@@ -16,18 +16,18 @@ export function loadCircles()        { try { const v=localStorage.getItem(LS_CIR
 export function saveCircles(c)       { try { localStorage.setItem(LS_CIRCLES,JSON.stringify(c)) } catch {} }
 
 // ── Real invite via email ─────────────────────────────────────────────────────
-export async function sendRealInvite(circleId, circleName, inviterName, email) {
+export async function sendRealInvite(circleId, circleName, inviterName, email, circleMode) {
   if (!isSupabaseConfigured()) {
-    // Without Supabase: generate a join link the inviter can copy and send manually
     const link = generateCircleInviteLink(circleId, circleName)
     return { ok:true, method:'link', link, message:`Copy this link and send to ${email}` }
   }
   const { url, key } = getSupabaseCredentials()
+  const token = (typeof window!=='undefined' && localStorage.getItem('wf_token')) || key
   try {
     const res = await fetch(`${url}/rest/v1/circle_invites`, {
       method:'POST',
-      headers:{'Content-Type':'application/json','apikey':key,'Authorization':`Bearer ${key}`,'Prefer':'return=minimal'},
-      body:JSON.stringify({ circle_id:circleId, circle_name:circleName, inviter_name:inviterName, email, status:'pending', created_at:new Date().toISOString() })
+      headers:{'Content-Type':'application/json','apikey':key,'Authorization':`Bearer ${token}`,'Prefer':'return=minimal'},
+      body:JSON.stringify({ circle_id:circleId, circle_name:circleName, circle_mode:circleMode||null, inviter_name:inviterName, email, status:'pending', created_at:new Date().toISOString() })
     })
     return res.ok ? { ok:true, method:'supabase' } : { ok:false, error:'Failed to store invite' }
   } catch(err) {
