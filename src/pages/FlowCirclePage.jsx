@@ -295,16 +295,17 @@ export default function FlowCirclePage() {
     // Add self as member in Supabase then re-sync to get fresh data
     if(isSupabaseConfigured()&&sbToken&&userId){
       const { url, key } = getSupabaseCredentials()
+      const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || key
       Promise.all([
         sb.circles.addMember(sbToken,{circle_id:nc.id,user_id:userId,name:user?.name||'You',role:'member',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch(()=>{}),
         fetch(`${url}/rest/v1/circle_invites?circle_id=eq.${nc.id}&email=eq.${encodeURIComponent(user?.email||'')}`,{
           method:'PATCH',
-          headers:{'Content-Type':'application/json','apikey':key,'Authorization':`Bearer ${sbToken}`},
+          headers:{'Content-Type':'application/json','apikey':serviceKey,'Authorization':`Bearer ${serviceKey}`},
           body:JSON.stringify({status:'accepted'})
         }).catch(()=>{})
       ]).then(()=>{
-        // Re-sync after membership is recorded so the circle shows up via member query
-        setSyncTrigger(t=>t+1)
+        // Small delay to ensure DB write is committed before re-sync
+        setTimeout(()=>setSyncTrigger(t=>t+1), 800)
       })
     }
     pushToast(`🎉 You joined "${nc.name}"!`,'success')

@@ -140,8 +140,8 @@ export function AppProvider({ children }) {
         save(LS.USER, u); setUserState(u)
         save(LS.AUTH, true); setIsLoggedIn(true)
         syncFromCloud(token)
-        const ob = load(LS.ONBOARD, {})
-        setPage(ob && Object.keys(ob).length > 0 ? 'dashboard' : 'onboarding')
+        const doneOnboard = load('wf_onboard_done', false) || (load(LS.ONBOARD,{}) && Object.keys(load(LS.ONBOARD,{})).length > 0)
+        setPage(doneOnboard ? 'dashboard' : 'onboarding')
         return { ok: true }
       } catch (err) {
         return { ok: false, error: err.message }
@@ -287,7 +287,7 @@ export function AppProvider({ children }) {
 
   // ── Onboarding ────────────────────────────────────────────────────────────
   const [onboardingData, setOnboardingDataState] = useState(() => load(LS.ONBOARD, {}))
-  const setOnboardingData = (data) => { save(LS.ONBOARD, data); setOnboardingDataState(data); const gen = genOnboardingTasks(data); if (gen.length) persistTasks(() => gen); setPage('planner') }
+  const setOnboardingData = (data) => { save(LS.ONBOARD, data); save('wf_onboard_done', true); setOnboardingDataState(data); const gen = genOnboardingTasks(data); if (gen.length) persistTasks(() => gen); setPage('planner') }
 
   // ── Week navigation ───────────────────────────────────────────────────────
   const [weekOffset, setWeekOffset] = useState(() => load(LS.WEEK, 0))
@@ -329,8 +329,7 @@ export function AppProvider({ children }) {
 
     if (urlPage) return urlPage
     if (!load(LS.AUTH, false)) return 'landing'
-    const ob = load(LS.ONBOARD, {})
-    const doneOnboarding = ob && Object.keys(ob).length > 0
+    const doneOnboarding = load('wf_onboard_done', false) || (()=>{ const ob=load(LS.ONBOARD,{}); return ob&&Object.keys(ob).length>0 })()
     return doneOnboarding ? 'dashboard' : 'onboarding'
   })
   const [darkMode,    setDarkModeRaw] = useState(() => load(LS.DARK, false))
