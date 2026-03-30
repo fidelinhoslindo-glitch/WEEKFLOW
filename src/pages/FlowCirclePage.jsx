@@ -202,7 +202,7 @@ export default function FlowCirclePage() {
     Promise.all([
       sb.circles.list(sbToken),
       // Get circle_ids where user is a member
-      fetch(`${url}/rest/v1/circle_members?user_id=eq.${userId}&select=circle_id`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${serviceKey}`}})
+      fetch(`${url}/rest/v1/circle_members?user_id=eq.${userId}&select=circle_id`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}})
         .then(r=>r.ok?r.json():[]).catch(()=>[])
     ]).then(async([owned, memberships])=>{
       const memberCircleIds = (memberships||[]).map(m=>m.circle_id).filter(Boolean)
@@ -213,9 +213,9 @@ export default function FlowCirclePage() {
       if(joinedIds.length>0){
         const results = await Promise.all(joinedIds.map(async cid=>{
           const [cRes,mRes,eRes] = await Promise.all([
-            fetch(`${url}/rest/v1/circles?id=eq.${cid}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${serviceKey}`}}),
-            fetch(`${url}/rest/v1/circle_members?circle_id=eq.${cid}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${serviceKey}`}}),
-            fetch(`${url}/rest/v1/circle_events?circle_id=eq.${cid}&select=*&order=date.asc`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${serviceKey}`}})
+            fetch(`${url}/rest/v1/circles?id=eq.${cid}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}}),
+            fetch(`${url}/rest/v1/circle_members?circle_id=eq.${cid}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}}),
+            fetch(`${url}/rest/v1/circle_events?circle_id=eq.${cid}&select=*&order=date.asc`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}})
           ])
           const cd = cRes.ok?(await cRes.json())[0]:null
           const members = mRes.ok?await mRes.json():[]
@@ -227,8 +227,8 @@ export default function FlowCirclePage() {
       // For owned circles, also fetch their members+events
       const ownedFull = await Promise.all((owned||[]).map(async c=>{
         const [mRes,eRes] = await Promise.all([
-          fetch(`${url}/rest/v1/circle_members?circle_id=eq.${c.id}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${serviceKey}`}}),
-          fetch(`${url}/rest/v1/circle_events?circle_id=eq.${c.id}&select=*&order=date.asc`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${serviceKey}`}})
+          fetch(`${url}/rest/v1/circle_members?circle_id=eq.${c.id}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}}),
+          fetch(`${url}/rest/v1/circle_events?circle_id=eq.${c.id}&select=*&order=date.asc`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}})
         ])
         const members = mRes.ok?await mRes.json():[]
         const events = eRes.ok?await eRes.json():[]
@@ -268,9 +268,9 @@ export default function FlowCirclePage() {
         // Use service key to bypass RLS on circles table (invitee is not owner)
         const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || key
         const [cRes, mRes, eRes] = await Promise.all([
-          fetch(`${url}/rest/v1/circles?id=eq.${invite.circleId}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${serviceKey}`}}),
-          fetch(`${url}/rest/v1/circle_members?circle_id=eq.${invite.circleId}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${serviceKey}`}}),
-          fetch(`${url}/rest/v1/circle_events?circle_id=eq.${invite.circleId}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${serviceKey}`}})
+          fetch(`${url}/rest/v1/circles?id=eq.${invite.circleId}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}}),
+          fetch(`${url}/rest/v1/circle_members?circle_id=eq.${invite.circleId}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}}),
+          fetch(`${url}/rest/v1/circle_events?circle_id=eq.${invite.circleId}&select=*`,{headers:{'apikey':serviceKey,'Authorization':`Bearer ${sbToken}`}})
         ])
         if(cRes.ok) { const d=await cRes.json(); circleData=d[0]||null }
         if(mRes.ok) members = await mRes.json() || []
@@ -300,7 +300,7 @@ export default function FlowCirclePage() {
         sb.circles.addMember(sbToken,{circle_id:nc.id,user_id:userId,name:user?.name||'You',role:'member',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch(()=>{}),
         fetch(`${url}/rest/v1/circle_invites?circle_id=eq.${nc.id}&email=eq.${encodeURIComponent(user?.email||'')}`,{
           method:'PATCH',
-          headers:{'Content-Type':'application/json','apikey':serviceKey,'Authorization':`Bearer ${serviceKey}`},
+          headers:{'Content-Type':'application/json','apikey':serviceKey,'Authorization':`Bearer ${sbToken}`},
           body:JSON.stringify({status:'accepted'})
         }).catch(()=>{})
       ]).then(()=>{

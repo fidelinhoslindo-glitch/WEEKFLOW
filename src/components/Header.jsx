@@ -25,7 +25,8 @@ function Header({ title, subtitle }) {
     try {
       const { url, key } = getSupabaseCredentials()
       const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || key
-      const mRes = await fetch(`${url}/rest/v1/circle_members?circle_id=eq.${n.circleInvite.circle_id}&select=*`, { headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` } })
+      const userToken = localStorage.getItem('wf_token') || key
+      const mRes = await fetch(`${url}/rest/v1/circle_members?circle_id=eq.${n.circleInvite.circle_id}&select=*`, { headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${userToken}` } })
       if (mRes.ok) members = await mRes.json() || []
     } catch {}
     setLoadingInvite(false)
