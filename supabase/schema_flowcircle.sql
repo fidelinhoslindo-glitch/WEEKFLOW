@@ -51,7 +51,7 @@ create policy "cm_member_read"
   on public.circle_members for select using (
     exists (
       select 1 from public.circle_members me
-      where me.circle_id = circle_id and me.user_id = auth.uid()
+      where me.circle_id = public.circle_members.circle_id and me.user_id = auth.uid()
     )
   );
 
@@ -74,7 +74,7 @@ create policy "cm_delete"
     auth.uid() = user_id
     or exists (
       select 1 from public.circles c
-      where c.id = circle_id and c.owner_id = auth.uid()
+      where c.id = public.circle_members.circle_id and c.owner_id = auth.uid()
     )
   );
 
@@ -105,7 +105,7 @@ create policy "ce_member_read"
   on public.circle_events for select using (
     exists (
       select 1 from public.circle_members cm
-      where cm.circle_id = circle_id and cm.user_id = auth.uid()
+      where cm.circle_id = public.circle_events.circle_id and cm.user_id = auth.uid()
     )
   );
 
@@ -115,7 +115,7 @@ create policy "ce_member_insert"
   on public.circle_events for insert with check (
     exists (
       select 1 from public.circle_members cm
-      where cm.circle_id = circle_id and cm.user_id = auth.uid()
+      where cm.circle_id = public.circle_events.circle_id and cm.user_id = auth.uid()
     )
   );
 
@@ -125,7 +125,7 @@ create policy "ce_member_delete"
   on public.circle_events for delete using (
     exists (
       select 1 from public.circle_members cm
-      where cm.circle_id = circle_id and cm.user_id = auth.uid()
+      where cm.circle_id = public.circle_events.circle_id and cm.user_id = auth.uid()
     )
   );
 
@@ -156,7 +156,7 @@ create policy "invites_circle_member_read"
   on public.circle_invites for select using (
     exists (
       select 1 from public.circle_members cm
-      where cm.circle_id = circle_id and cm.user_id = auth.uid()
+      where cm.circle_id = public.circle_invites.circle_id and cm.user_id = auth.uid()
     )
   );
 
@@ -166,7 +166,7 @@ create policy "invites_member_insert"
   on public.circle_invites for insert with check (
     exists (
       select 1 from public.circle_members cm
-      where cm.circle_id = circle_id and cm.user_id = auth.uid()
+      where cm.circle_id = public.circle_invites.circle_id and cm.user_id = auth.uid()
     )
   );
 
@@ -193,7 +193,7 @@ create policy "votes_member_read"
   on public.circle_poll_votes for select using (
     exists (
       select 1 from public.circle_members cm
-      where cm.circle_id = circle_id and cm.user_id = auth.uid()
+      where cm.circle_id = public.circle_poll_votes.circle_id and cm.user_id = auth.uid()
     )
   );
 
