@@ -17,21 +17,19 @@ function Header({ title, subtitle }) {
   const openInviteModal = async (n) => {
     setShowNotifs(false)
     setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))
+    // circle_mode is stored in the invite row itself — no need to query circles table (RLS blocks it)
+    const circleMode = n.circleInvite.circle_mode || null
+    setInviteModal({ invite: n.circleInvite, notifId: n.id, members: [], circleMode })
     setLoadingInvite(true)
-    setInviteModal({ invite: n.circleInvite, notifId: n.id, members: [], circleMode: null })
     let members = []
-    let circleMode = null
     try {
       const { url, key } = getSupabaseCredentials()
-      const [mRes, cRes] = await Promise.all([
-        fetch(`${url}/rest/v1/circle_members?circle_id=eq.${n.circleInvite.circle_id}&select=*`, { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } }),
-        fetch(`${url}/rest/v1/circles?id=eq.${n.circleInvite.circle_id}&select=mode,color`, { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } })
-      ])
+      const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || key
+      const mRes = await fetch(`${url}/rest/v1/circle_members?circle_id=eq.${n.circleInvite.circle_id}&select=*`, { headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` } })
       if (mRes.ok) members = await mRes.json() || []
-      if (cRes.ok) { const cd = await cRes.json(); circleMode = cd[0]?.mode || null }
     } catch {}
     setLoadingInvite(false)
-    setInviteModal(prev => prev ? { ...prev, members, circleMode } : null)
+    setInviteModal(prev => prev ? { ...prev, members } : null)
   }
 
   const acceptInvite = () => {
