@@ -1,10 +1,18 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- FlowCircle — Schema with proper RLS (membership-based access)
 -- Run this in: Supabase Dashboard → SQL Editor → Run
+-- WARNING: drops and recreates FlowCircle tables — existing data will be lost
 -- ═══════════════════════════════════════════════════════════════════════════════
 
+-- Drop in reverse dependency order
+drop table if exists public.circle_poll_votes cascade;
+drop table if exists public.circle_invites cascade;
+drop table if exists public.circle_events cascade;
+drop table if exists public.circle_members cascade;
+drop table if exists public.circles cascade;
+
 -- ── circles ──────────────────────────────────────────────
-create table if not exists public.circles (
+create table public.circles (
   id          text primary key,
   owner_id    uuid references auth.users(id) on delete cascade not null,
   name        text not null,
@@ -15,26 +23,22 @@ create table if not exists public.circles (
 
 alter table public.circles enable row level security;
 
--- Owner can do everything
-drop policy if exists "own circles" on public.circles;
 create policy "circles_owner_all"
   on public.circles for all using (auth.uid() = owner_id);
 
--- Members can read circles they belong to
-drop policy if exists "read circles" on public.circles;
 create policy "circles_member_read"
   on public.circles for select using (
     exists (
       select 1 from public.circle_members cm
-      where cm.circle_id = id and cm.user_id = auth.uid()
+      where cm.circle_id = public.circles.id and cm.user_id = auth.uid()
     )
   );
 
 
 -- ── circle_members ───────────────────────────────────────
-create table if not exists public.circle_members (
+create table public.circle_members (
   id          bigserial primary key,
-  circle_id   text references public.circles(id) on delete cascade not null,
+  circle_id   text not null,
   user_id     uuid references auth.users(id) on delete cascade,
   name        text,
   role        text default 'member',
@@ -45,8 +49,6 @@ create table if not exists public.circle_members (
 
 alter table public.circle_members enable row level security;
 
--- Members can read other members in the same circle
-drop policy if exists "read circle members" on public.circle_members;
 create policy "cm_member_read"
   on public.circle_members for select using (
     exists (
@@ -55,20 +57,12 @@ create policy "cm_member_read"
     )
   );
 
--- Authenticated users can insert themselves as member (join)
-drop policy if exists "insert circle members" on public.circle_members;
 create policy "cm_self_insert"
-  on public.circle_members for insert with check (
-    auth.uid() = user_id
-  );
+  on public.circle_members for insert with check (auth.uid() = user_id);
 
--- Members can update their own row (status, avatar, etc)
 create policy "cm_self_update"
-  on public.circle_members for update using (
-    auth.uid() = user_id
-  );
+  on public.circle_members for update using (auth.uid() = user_id);
 
--- Circle owner can delete any member; members can delete themselves (leave)
 create policy "cm_delete"
   on public.circle_members for delete using (
     auth.uid() = user_id
@@ -80,9 +74,9 @@ create policy "cm_delete"
 
 
 -- ── circle_events ────────────────────────────────────────
-create table if not exists public.circle_events (
+create table public.circle_events (
   id          text primary key,
-  circle_id   text references public.circles(id) on delete cascade not null,
+  circle_id   text not null,
   title       text not null,
   date        text,
   time        text default '18:00',
@@ -99,8 +93,6 @@ create table if not exists public.circle_events (
 
 alter table public.circle_events enable row level security;
 
--- Only members can read events
-drop policy if exists "read circle events" on public.circle_events;
 create policy "ce_member_read"
   on public.circle_events for select using (
     exists (
@@ -109,8 +101,6 @@ create policy "ce_member_read"
     )
   );
 
--- Only members can insert events
-drop policy if exists "insert circle events" on public.circle_events;
 create policy "ce_member_insert"
   on public.circle_events for insert with check (
     exists (
@@ -119,8 +109,6 @@ create policy "ce_member_insert"
     )
   );
 
--- Only members can delete events
-drop policy if exists "delete circle events" on public.circle_events;
 create policy "ce_member_delete"
   on public.circle_events for delete using (
     exists (
@@ -131,7 +119,7 @@ create policy "ce_member_delete"
 
 
 -- ── circle_invites ───────────────────────────────────────
-create table if not exists public.circle_invites (
+create table public.circle_invites (
   id            bigserial primary key,
   circle_id     text not null,
   circle_name   text not null,
@@ -144,14 +132,11 @@ create table if not exists public.circle_invites (
 
 alter table public.circle_invites enable row level security;
 
--- Invitee can read their own invites (by email matching their auth email)
-drop policy if exists "read invites by email" on public.circle_invites;
 create policy "invites_recipient_read"
   on public.circle_invites for select using (
     email = (select email from auth.users where id = auth.uid())
   );
 
--- Circle members can also read invites for their circle (to see pending invites)
 create policy "invites_circle_member_read"
   on public.circle_invites for select using (
     exists (
@@ -160,8 +145,6 @@ create policy "invites_circle_member_read"
     )
   );
 
--- Any authenticated user who is a circle member can create invites for that circle
-drop policy if exists "insert invites" on public.circle_invites;
 create policy "invites_member_insert"
   on public.circle_invites for insert with check (
     exists (
@@ -170,8 +153,6 @@ create policy "invites_member_insert"
     )
   );
 
--- Invitee can update their own invite (accept/decline)
-drop policy if exists "update invites" on public.circle_invites;
 create policy "invites_recipient_update"
   on public.circle_invites for update using (
     email = (select email from auth.users where id = auth.uid())
@@ -179,7 +160,7 @@ create policy "invites_recipient_update"
 
 
 -- ── circle_poll_votes ────────────────────────────────────
-create table if not exists public.circle_poll_votes (
+create table public.circle_poll_votes (
   id          bigserial primary key,
   circle_id   text not null,
   user_id     uuid references auth.users(id),
@@ -198,9 +179,7 @@ create policy "votes_member_read"
   );
 
 create policy "votes_self_insert"
-  on public.circle_poll_votes for insert with check (
-    auth.uid() = user_id
-  );
+  on public.circle_poll_votes for insert with check (auth.uid() = user_id);
 
 
 -- ── Enable realtime ──────────────────────────────────────
