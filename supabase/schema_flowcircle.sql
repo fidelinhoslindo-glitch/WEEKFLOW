@@ -11,7 +11,7 @@ drop table if exists public.circle_events cascade;
 drop table if exists public.circle_members cascade;
 drop table if exists public.circles cascade;
 
--- ── circles ──────────────────────────────────────────────
+-- ── circles (sem a policy de member ainda) ───────────────
 create table public.circles (
   id          text primary key,
   owner_id    uuid references auth.users(id) on delete cascade not null,
@@ -26,19 +26,11 @@ alter table public.circles enable row level security;
 create policy "circles_owner_all"
   on public.circles for all using (auth.uid() = owner_id);
 
-create policy "circles_member_read"
-  on public.circles for select using (
-    exists (
-      select 1 from public.circle_members cm
-      where cm.circle_id = public.circles.id and cm.user_id = auth.uid()
-    )
-  );
-
 
 -- ── circle_members ───────────────────────────────────────
 create table public.circle_members (
   id          bigserial primary key,
-  circle_id   text not null,
+  circle_id   text not null references public.circles(id) on delete cascade,
   user_id     uuid references auth.users(id) on delete cascade,
   name        text,
   role        text default 'member',
@@ -73,10 +65,21 @@ create policy "cm_delete"
   );
 
 
+-- ── circles: policy que depende de circle_members ────────
+-- (criada aqui pois circle_members já existe)
+create policy "circles_member_read"
+  on public.circles for select using (
+    exists (
+      select 1 from public.circle_members cm
+      where cm.circle_id = public.circles.id and cm.user_id = auth.uid()
+    )
+  );
+
+
 -- ── circle_events ────────────────────────────────────────
 create table public.circle_events (
   id          text primary key,
-  circle_id   text not null,
+  circle_id   text not null references public.circles(id) on delete cascade,
   title       text not null,
   date        text,
   time        text default '18:00',
