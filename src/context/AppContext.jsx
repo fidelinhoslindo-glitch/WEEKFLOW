@@ -107,7 +107,13 @@ function weekLabel(offset) {
 export function AppProvider({ children }) {
   // ── Auth ──────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn] = useState(() => load(LS.AUTH, false))
-  const [sbToken,    setSbToken]    = useState(() => load(LS.TOKEN, null))
+  const [sbToken,    setSbToken]    = useState(() => {
+    // On init: if token is expired, clear it so refresh kicks in via useEffect
+    const t = load(LS.TOKEN, null)
+    if (!t) return null
+    try { const exp = JSON.parse(atob(t.split('.')[1])).exp * 1000; if (Date.now() > exp) return null } catch {}
+    return t
+  })
   const [user, setUserState]        = useState(() => load(LS.USER, { name:'', email:'', plan:'Free', avatar:null, avatarColor:'#6467f2' }))
   const [syncing, setSyncing]       = useState(false)
 
@@ -628,17 +634,18 @@ export function AppProvider({ children }) {
     return () => window.removeEventListener('keydown', fn)
   }, [])
 
-  // ── Auto-refresh JWT token before it expires ─────────────────────────────
+  // ── Auto-refresh JWT token (on load + every 5min) ────────────────────────
   useEffect(() => {
-    if (!sbToken) return
     const tryRefresh = async () => {
       try {
-        const payload = JSON.parse(atob(sbToken.split('.')[1]))
-        const expiresIn = payload.exp * 1000 - Date.now()
-        if (expiresIn > 5 * 60 * 1000) return // still > 5min, skip
         const rt = localStorage.getItem('wf_refresh_token')
         if (!rt) return
         const refreshToken = JSON.parse(rt)
+        // If token exists and still has > 5min, skip
+        const currentToken = load(LS.TOKEN, null)
+        if (currentToken) {
+          try { const exp = JSON.parse(atob(currentToken.split('.')[1])).exp * 1000; if (exp - Date.now() > 5 * 60 * 1000) return } catch {}
+        }
         const res = await supabaseRefreshToken(refreshToken)
         if (res.access_token) {
           save(LS.TOKEN, res.access_token); setSbToken(res.access_token)
@@ -646,10 +653,10 @@ export function AppProvider({ children }) {
         }
       } catch {}
     }
-    tryRefresh()
-    const interval = setInterval(tryRefresh, 5 * 60 * 1000) // check every 5min
+    tryRefresh() // run immediately on mount
+    const interval = setInterval(tryRefresh, 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [sbToken])
+  }, []) // only once on mount
 
   // ── Search ────────────────────────────────────────────────────────────────
   const searchResults = searchQuery.trim().length > 1
