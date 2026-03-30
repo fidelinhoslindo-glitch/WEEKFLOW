@@ -188,9 +188,12 @@ export default function FlowCirclePage() {
   const mode   = circle?CIRCLE_MODES[circle.mode]:null
   const persist = useCallback((u)=>{setCircles(u);saveCircles(u)},[])
 
+  // Trigger to force a re-sync after joining a circle
+  const [syncTrigger, setSyncTrigger] = useState(0)
+
   // ── Sync from Supabase ──
   useEffect(()=>{
-    if(!isSupabaseConfigured()||!sbToken)return
+    if(!isSupabaseConfigured()||!sbToken||!userId)return
     setSyncing(true)
     const { url, key } = getSupabaseCredentials()
     // Fetch circles owned by user AND circles joined as member
@@ -230,9 +233,18 @@ export default function FlowCirclePage() {
         return {...c,members,events}
       }))
       const allCircles = [...ownedFull,...joined]
-      if(allCircles.length>0) persist([...loadCircles().filter(c=>c.id.startsWith('circle_demo_')),...allCircles])
+      if(allCircles.length>0){
+        const demos = loadCircles().filter(c=>c.id.startsWith('circle_demo_'))
+        persist([...demos,...allCircles])
+        // Ensure active circle is set if not already pointing to a valid one
+        setActiveId(prev => {
+          const ids = allCircles.map(c=>c.id)
+          if(prev && ids.includes(prev)) return prev
+          return allCircles[0]?.id || prev
+        })
+      }
     }).catch(()=>{}).finally(()=>setSyncing(false))
-  },[sbToken,userId])
+  },[sbToken,userId,syncTrigger])
 
   // Invite check moved to AppContext (global — works on any page)
 
@@ -270,18 +282,26 @@ export default function FlowCirclePage() {
       events,
       createdAt:circleData?.created_at||new Date().toISOString()
     }
-    persist([...circles,nc])
+    // Use functional updater to avoid stale closure over `circles`
+    persist(prev => {
+      if(prev.find(c=>c.id===nc.id)) return prev
+      return [...prev, nc]
+    })
     setActiveId(nc.id)
-    // Add self as member in Supabase
+    // Add self as member in Supabase then re-sync to get fresh data
     if(isSupabaseConfigured()&&sbToken&&userId){
-      sb.circles.addMember(sbToken,{circle_id:nc.id,user_id:userId,name:user?.name||'You',role:'member',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch(()=>{})
-      // Mark invite as accepted
       const { url, key } = getSupabaseCredentials()
-      fetch(`${url}/rest/v1/circle_invites?circle_id=eq.${nc.id}&email=eq.${encodeURIComponent(user?.email||'')}`,{
-        method:'PATCH',
-        headers:{'Content-Type':'application/json','apikey':key,'Authorization':`Bearer ${sbToken}`},
-        body:JSON.stringify({status:'accepted'})
-      }).catch(()=>{})
+      Promise.all([
+        sb.circles.addMember(sbToken,{circle_id:nc.id,user_id:userId,name:user?.name||'You',role:'member',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch(()=>{}),
+        fetch(`${url}/rest/v1/circle_invites?circle_id=eq.${nc.id}&email=eq.${encodeURIComponent(user?.email||'')}`,{
+          method:'PATCH',
+          headers:{'Content-Type':'application/json','apikey':key,'Authorization':`Bearer ${sbToken}`},
+          body:JSON.stringify({status:'accepted'})
+        }).catch(()=>{})
+      ]).then(()=>{
+        // Re-sync after membership is recorded so the circle shows up via member query
+        setSyncTrigger(t=>t+1)
+      })
     }
     pushToast(`🎉 You joined "${nc.name}"!`,'success')
     setPendingCircleInvite(null)
