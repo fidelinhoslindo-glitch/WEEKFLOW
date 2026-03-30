@@ -119,7 +119,8 @@ export function AppProvider({ children }) {
     // password=null means OAuth already handled (token already in localStorage)
     if (password === null) {
       const existingToken = load(LS.TOKEN, null)
-      const u = { name: name || email?.split('@')[0] || 'User', email: email || '', plan:'Free', avatar:null, avatarColor:'#6467f2' }
+      const tokenId = (() => { try { return JSON.parse(atob((existingToken||'').split('.')[1])).sub||null } catch { return null } })()
+      const u = { name: name || email?.split('@')[0] || 'User', email: email || '', plan:'Free', avatar:null, avatarColor:'#6467f2', id: tokenId }
       save(LS.USER, u); setUserState(u)
       save(LS.AUTH, true); setIsLoggedIn(true)
       if (existingToken) { setSbToken(existingToken); syncFromCloud(existingToken) }

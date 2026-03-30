@@ -169,7 +169,8 @@ function EventCard({ ev, onDelete, onPin }) {
 export default function FlowCirclePage() {
   const {pushToast,user,planLimits,isPro,pendingCircleInvite,setPendingCircleInvite,notifications,setNotifications,sendPushNotification} = useApp()
   const sbToken = typeof window!=='undefined'?localStorage.getItem('wf_token'):null
-  const userId  = user?.id
+  // user.id may be missing if saved before id was stored — decode from JWT as fallback
+  const userId = user?.id || (() => { try { const t=localStorage.getItem('wf_token'); if(!t)return null; return JSON.parse(atob(t.split('.')[1])).sub||null } catch { return null } })()
   const [circles,setCircles]         = useState(loadCircles)
   const [activeId,setActiveId]       = useState(()=>loadCircles()[0]?.id||null)
   const [showCreate,setShowCreate]   = useState(false)
