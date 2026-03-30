@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { SUPABASE_ENABLED, sb, supabaseSignIn, supabaseSignUp, supabaseSignOut, isSupabaseConfigured, getSupabaseCredentials } from '../utils/supabase'
+import { SUPABASE_ENABLED, sb, supabaseSignIn, supabaseSignUp, supabaseSignOut, supabaseRefreshToken, isSupabaseConfigured, getSupabaseCredentials } from '../utils/supabase'
 import { TOAST_TIMEOUT, FREE_TASK_LIMIT, VALID_PAGES } from '../utils/constants'
 
 const AppContext = createContext(null)
@@ -627,6 +627,29 @@ export function AppProvider({ children }) {
     window.addEventListener('keydown', fn)
     return () => window.removeEventListener('keydown', fn)
   }, [])
+
+  // ── Auto-refresh JWT token before it expires ─────────────────────────────
+  useEffect(() => {
+    if (!sbToken) return
+    const tryRefresh = async () => {
+      try {
+        const payload = JSON.parse(atob(sbToken.split('.')[1]))
+        const expiresIn = payload.exp * 1000 - Date.now()
+        if (expiresIn > 5 * 60 * 1000) return // still > 5min, skip
+        const rt = localStorage.getItem('wf_refresh_token')
+        if (!rt) return
+        const refreshToken = JSON.parse(rt)
+        const res = await supabaseRefreshToken(refreshToken)
+        if (res.access_token) {
+          save(LS.TOKEN, res.access_token); setSbToken(res.access_token)
+          if (res.refresh_token) localStorage.setItem('wf_refresh_token', JSON.stringify(res.refresh_token))
+        }
+      } catch {}
+    }
+    tryRefresh()
+    const interval = setInterval(tryRefresh, 5 * 60 * 1000) // check every 5min
+    return () => clearInterval(interval)
+  }, [sbToken])
 
   // ── Search ────────────────────────────────────────────────────────────────
   const searchResults = searchQuery.trim().length > 1

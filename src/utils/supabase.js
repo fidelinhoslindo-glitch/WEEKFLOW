@@ -170,6 +170,15 @@ export async function supabaseUpdatePassword(token, newPassword) {
   return d
 }
 
+export async function supabaseRefreshToken(refreshToken) {
+  const res = await fetch(`${getSbUrl()}/auth/v1/token?grant_type=refresh_token`, {
+    method:'POST', headers:{'Content-Type':'application/json','apikey':getSbKey()},
+    body: JSON.stringify({ refresh_token: refreshToken })
+  })
+  if (!res.ok) throw new Error('Refresh failed')
+  return res.json()
+}
+
 export async function supabaseSignOut(token) {
   await fetch(`${getSbUrl()}/auth/v1/logout`, {
     method:'POST', headers:{'apikey':getSbKey(),'Authorization':`Bearer ${token}`}
