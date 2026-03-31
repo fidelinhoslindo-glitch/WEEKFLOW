@@ -36,6 +36,8 @@ import SupportChat    from './components/SupportChat'
 import TourGuide, { useTour } from './components/TourGuide'
 import FlowCircleWidget from './components/FlowCircleWidget'
 import SetupWizard    from './components/SetupWizard'
+import TrialBanner    from './components/TrialBanner'
+import TrialExpiredModal from './components/TrialExpiredModal'
 
 // ── Page map ─────────────────────────────────────────────────────────────────
 const PAGES = {
@@ -169,6 +171,7 @@ function AppInner() {
           </button>
         </div>
       )}
+      {isLoggedIn && showBottomNav && <TrialBanner />}
       <ErrorBoundary>
         <div className={showBottomNav ? 'pb-20 lg:pb-0' : ''}>
           <PageComponent />
@@ -183,6 +186,7 @@ function AppInner() {
       {showAIChat     && <AIChat onClose={() => setShowAIChat(false)} />}
       {showTour && isLoggedIn && <TourGuide onFinish={finishTour} />}
       {isLoggedIn && showBottomNav && <FlowCircleWidget />}
+      {isLoggedIn && <TrialExpiredModal />}
       <ToastContainer />
       <KeyboardHint />
 

@@ -5,7 +5,7 @@ import {
   fbSignIn, fbSignUp, fbSignOut, fbSignInWithGoogle,
   fbGetRedirectResult, fbOnAuthStateChanged,
 } from '../utils/firebaseAuth'
-import { dbGetTasks, dbSaveTasks, dbGetProfile } from '../utils/firebaseDB'
+import { dbGetTasks, dbSaveTasks, dbGetProfile, dbSaveProfile } from '../utils/firebaseDB'
 import { fbSubscribeToInvites } from '../utils/firebaseCircle'
 import { seedDemoData, DEMO_USER } from '../utils/demoData'
 
@@ -116,6 +116,7 @@ export function AppProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(() => load(LS.AUTH, false))
   const [user, setUserState]        = useState(() => load(LS.USER, { name:'', email:'', plan:'Free', avatar:null, avatarColor:'#6467f2' }))
   const [syncing, setSyncing]       = useState(false)
+  const [trialJustExpired, setTrialJustExpired] = useState(false)
 
   const setUser = useCallback((updater) => {
     setUserState(prev => { const next = typeof updater === 'function' ? updater(prev) : updater; save(LS.USER, next); return next })
@@ -153,11 +154,44 @@ export function AppProvider({ children }) {
     localStorage.removeItem(LS.TASKS); localStorage.removeItem(LS.ONBOARD)
     localStorage.removeItem(LS.WEEK); localStorage.removeItem('wf_notes')
     setTasksState([]); setOnboardingDataState({})
+
+    const resolvedName = displayName || fbUser.displayName || fbUser.email?.split('@')[0] || 'User'
+
+    // Load profile from Firestore to determine plan/trial state
+    let profile = null
+    try { profile = await dbGetProfile(fbUser.uid) } catch {}
+
+    let plan = 'Free'
+    let trialEnd = null
+    let isTrialUser = false
+
+    if (!profile) {
+      // First login — grant 7-day Pro trial
+      trialEnd = Date.now() + 7 * 24 * 60 * 60 * 1000
+      isTrialUser = true
+      plan = 'Pro'
+      const newProfile = { name: resolvedName, plan, trialEnd, isTrialUser }
+      try { await dbSaveProfile(fbUser.uid, newProfile) } catch {}
+    } else {
+      plan = profile.plan || 'Free'
+      trialEnd = profile.trialEnd || null
+      isTrialUser = profile.isTrialUser || false
+
+      // Check if Pro trial has expired
+      if (isTrialUser && plan === 'Pro' && trialEnd && Date.now() > trialEnd) {
+        plan = 'Free'
+        try { await dbSaveProfile(fbUser.uid, { plan: 'Free' }) } catch {}
+        setTrialJustExpired(true)
+      }
+    }
+
     const u = {
       id: fbUser.uid,
       email: fbUser.email || '',
-      name: displayName || fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
-      plan: 'Free',
+      name: resolvedName,
+      plan,
+      trialEnd,
+      isTrialUser,
       avatar: fbUser.photoURL || null,
       avatarColor: '#6467f2',
     }
@@ -257,15 +291,22 @@ export function AppProvider({ children }) {
       ])
       if (cloudTasks?.length > 0) { setTasksState(cloudTasks); save(LS.TASKS, cloudTasks) }
       if (profile) {
+        // Check if Pro trial expired since last sync
+        let resolvedProfile = { ...profile }
+        if (resolvedProfile.isTrialUser && resolvedProfile.plan === 'Pro' && resolvedProfile.trialEnd && Date.now() > resolvedProfile.trialEnd) {
+          resolvedProfile.plan = 'Free'
+          try { await dbSaveProfile(uid, { plan: 'Free' }) } catch {}
+          setTrialJustExpired(true)
+        }
         setUserState(prev => {
-          const merged = { ...prev, ...profile }
+          const merged = { ...prev, ...resolvedProfile }
           save(LS.USER, merged)
           return merged
         })
       }
     } catch {}
     setSyncing(false)
-  }, [])
+  }, []) // eslint-disable-line
 
   const syncToCloud = useCallback(async (tasks) => {
     if (!isFirebaseConfigured() || !user?.id) return
@@ -478,6 +519,13 @@ export function AppProvider({ children }) {
 
   const planLimits = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free
 
+  // ── Trial helpers ─────────────────────────────────────────────────────────
+  const trialDaysLeft = (() => {
+    if (!user?.isTrialUser || !user?.trialEnd) return 0
+    const ms = user.trialEnd - Date.now()
+    return ms > 0 ? Math.ceil(ms / (1000 * 60 * 60 * 24)) : 0
+  })()
+
 
   // ── Notifications ─────────────────────────────────────────────────────────
   const [notifications, setNotifications] = useState([])
@@ -684,6 +732,8 @@ export function AppProvider({ children }) {
       requestPushPermission, sendPushNotification,
       // flowcircle invite
       pendingCircleInvite, setPendingCircleInvite,
+      // trial
+      trialDaysLeft, trialJustExpired, setTrialJustExpired,
       // misc
       confetti, setConfetti,
       categoryColors,
