@@ -6,7 +6,7 @@ import { CIRCLE_MODES, loadCircles, saveCircles, generateCircleInviteLink } from
 import { isFirebaseConfigured } from '../utils/firebase'
 import {
   fbListCircles, fbUpsertCircle, fbDeleteCircle,
-  fbGetMembers, fbAddMember,
+  fbGetCircle, fbGetMembers, fbAddMember,
   fbGetEvents, fbAddEvent, fbDeleteEvent,
   fbSendInvite, fbUpdateInviteStatus,
   fbSubscribeToEvents,
@@ -243,20 +243,20 @@ export default function FlowCirclePage() {
         await fbUpdateInviteStatus(invite.inviteId, 'accepted').catch(()=>{})
       }
     }
-    // Fetch fresh circle data from Firestore
+    // Fetch fresh circle data from Firestore (use direct ID lookup to avoid race condition)
     let members = []
     let events = []
     let circleData = null
     if(isFirebaseConfigured()){
       try {
-        const [mData, eData, cList] = await Promise.all([
+        const [mData, eData, cData] = await Promise.all([
           fbGetMembers(invite.circleId),
           fbGetEvents(invite.circleId),
-          fbListCircles(userId).catch(()=>[])
+          fbGetCircle(invite.circleId).catch(()=>null)
         ])
         members = mData || []
         events = eData || []
-        circleData = cList.find(c=>c.id===invite.circleId)||null
+        circleData = cData || null
       } catch {}
     }
     const nc={
@@ -268,12 +268,10 @@ export default function FlowCirclePage() {
       events,
       createdAt:circleData?.createdAt||new Date().toISOString()
     }
-    persist(prev => {
-      if(prev.find(c=>c.id===nc.id)) return prev
-      return [...prev, nc]
-    })
+    persist(circles.find(c=>c.id===nc.id) ? circles : [...circles, nc])
     setActiveId(nc.id)
-    setTimeout(()=>setSyncTrigger(t=>t+1), 500)
+    // Delay sync to give Firestore time to propagate the new member doc
+    setTimeout(()=>setSyncTrigger(t=>t+1), 2000)
     pushToast(`🎉 You joined "${nc.name}"!`,'success')
     setPendingCircleInvite(null)
   }

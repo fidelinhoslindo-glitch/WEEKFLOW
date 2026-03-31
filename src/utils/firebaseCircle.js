@@ -17,6 +17,12 @@ export async function fbListCircles(userId) {
   return circles.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() }))
 }
 
+export async function fbGetCircle(circleId) {
+  if (!isFirebaseConfigured()) return null
+  const snap = await getDoc(doc(db, 'circles', circleId))
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null
+}
+
 export async function fbUpsertCircle(circleData) {
   if (!isFirebaseConfigured()) return
   const { id, ...rest } = circleData
