@@ -188,7 +188,7 @@ export default function FlowCirclePage() {
   const [newEvTitle,setNewEvTitle]   = useState('')
   const [showEvModal,setShowEvModal] = useState(false)
   const [showCircleList,setShowCircleList] = useState(false) // mobile sidebar toggle
-  const [evForm,setEvForm]           = useState({ title:'', date: new Date().toISOString().split('T')[0], time:'18:00', duration:60, color:'#6467f2', emoji:'📅', note:'', image:null, pinned:false })
+  const [evForm,setEvForm]           = useState({ title:'', date: new Date().toISOString().split('T')[0], time:'18:00', duration:60, color:'#6467f2', emoji:'📅', note:'', image:null, pinned:false, eventType:'evento', pollOptions:['',''], assignee:'', dueDate:'', location:'' })
 
   const circle = circles.find(c=>c.id===activeId)
   const mode   = circle?CIRCLE_MODES[circle.mode]:null
@@ -290,17 +290,26 @@ export default function FlowCirclePage() {
 
   const addEventFull = async()=>{
     if(!circle||!evForm.title.trim())return
+    if(evForm.eventType==='enquete'){
+      const validOpts = evForm.pollOptions.filter(o=>o.trim())
+      if(validOpts.length<2)return
+    }
     const ev={
       id:'ev_'+Date.now(),title:evForm.title.trim(),date:evForm.date,time:evForm.time,
       duration:Number(evForm.duration),color:evForm.color,emoji:evForm.emoji,
       note:evForm.note.trim(),image:evForm.image,pinned:evForm.pinned,
       createdBy:user?.name||'You',shared:true,circleId:circle.id,
+      eventType:evForm.eventType,
+      ...(evForm.eventType==='enquete'&&{ pollOptions:evForm.pollOptions.filter(o=>o.trim()) }),
+      ...(evForm.eventType==='tarefa'&&{ assignee:evForm.assignee, dueDate:evForm.dueDate }),
+      ...(evForm.eventType==='localizacao'&&{ location:evForm.location.trim() }),
     }
     persist(circles.map(c=>c.id===circle.id?{...c,events:[...(c.events||[]),ev]}:c))
     if(isFirebaseConfigured())await fbAddEvent(circle.id, ev).catch(()=>{})
-    pushToast('Event created!','success')
+    const typeLabels={evento:'Event',enquete:'Enquete',anuncio:'Anuncio',tarefa:'Tarefa',localizacao:'Evento'}
+    pushToast(`${typeLabels[evForm.eventType]||'Event'} created!`,'success')
     setShowEvModal(false)
-    setEvForm({ title:'', date:new Date().toISOString().split('T')[0], time:'18:00', duration:60, color:'#6467f2', emoji:'📅', note:'', image:null, pinned:false })
+    setEvForm({ title:'', date:new Date().toISOString().split('T')[0], time:'18:00', duration:60, color:'#6467f2', emoji:'📅', note:'', image:null, pinned:false, eventType:'evento', pollOptions:['',''], assignee:'', dueDate:'', location:'' })
   }
 
   const togglePin = (eid)=>{
@@ -631,97 +640,209 @@ export default function FlowCirclePage() {
                 <span className="material-symbols-outlined text-sm">close</span>
               </button>
             </div>
+
+            {/* ── Event Type Selector ── */}
+            <div className="px-6 pt-4 shrink-0">
+              <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl p-1">
+                {[
+                  {id:'evento',  label:'Evento',    icon:'📅'},
+                  {id:'enquete', label:'Enquete',   icon:'📊'},
+                  {id:'anuncio', label:'Anúncio',   icon:'📣'},
+                  {id:'tarefa',  label:'Tarefa',    icon:'✅'},
+                  {id:'localizacao', label:'Local', icon:'📍'},
+                ].map(t=>(
+                  <button key={t.id}
+                    onClick={()=>setEvForm(f=>({...f,eventType:t.id}))}
+                    className={`flex-1 flex flex-col items-center gap-0.5 py-2 rounded-xl text-xs font-bold transition-all ${evForm.eventType===t.id?'bg-white dark:bg-slate-700 text-primary shadow-sm':'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                    <span className="text-base leading-none">{t.icon}</span>
+                    <span className="leading-none">{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="overflow-y-auto flex-1 p-6 space-y-5">
 
-              <div>
-                {evForm.image?(
-                  <div className="relative rounded-2xl overflow-hidden h-40 group">
-                    <img src={evForm.image} alt="" className="w-full h-full object-cover"/>
-                    <button onClick={()=>setEvForm(f=>({...f,image:null}))}
-                      className="absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center text-white transition-all">
-                      <span className="material-symbols-outlined text-xs">close</span>
-                    </button>
+              {/* Cover image — not shown for enquete */}
+              {evForm.eventType!=='enquete'&&(
+                <div>
+                  {evForm.image?(
+                    <div className="relative rounded-2xl overflow-hidden h-40 group">
+                      <img src={evForm.image} alt="" className="w-full h-full object-cover"/>
+                      <button onClick={()=>setEvForm(f=>({...f,image:null}))}
+                        className="absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center text-white transition-all">
+                        <span className="material-symbols-outlined text-xs">close</span>
+                      </button>
+                    </div>
+                  ):(
+                    <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl cursor-pointer hover:border-primary transition-colors group">
+                      <span className="material-symbols-outlined text-2xl text-slate-300 group-hover:text-primary transition-colors">add_photo_alternate</span>
+                      <span className="text-xs text-slate-400 mt-1 font-medium">Add cover image</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={e=>{
+                        const file=e.target.files?.[0];if(!file)return
+                        const reader=new FileReader();reader.onload=ev=>setEvForm(f=>({...f,image:ev.target.result}));reader.readAsDataURL(file)
+                      }}/>
+                    </label>
+                  )}
+                </div>
+              )}
+
+              {/* Emoji category — not shown for enquete/anuncio */}
+              {evForm.eventType!=='enquete'&&(
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Category</label>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {['📅','🎉','🍕','🎬','🏃','🎮','🎂','✈️','🎵','💼','🏠','🤝'].map(em=>(
+                      <button key={em} onClick={()=>setEvForm(f=>({...f,emoji:em}))}
+                        className={`w-9 h-9 rounded-xl text-lg transition-all hover:scale-110 ${evForm.emoji===em?'bg-primary/10 ring-2 ring-primary scale-110':'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                        {em}
+                      </button>
+                    ))}
                   </div>
-                ):(
-                  <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl cursor-pointer hover:border-primary transition-colors group">
-                    <span className="material-symbols-outlined text-2xl text-slate-300 group-hover:text-primary transition-colors">add_photo_alternate</span>
-                    <span className="text-xs text-slate-400 mt-1 font-medium">Add cover image</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={e=>{
-                      const file=e.target.files?.[0];if(!file)return
-                      const reader=new FileReader();reader.onload=ev=>setEvForm(f=>({...f,image:ev.target.result}));reader.readAsDataURL(file)
-                    }}/>
-                  </label>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Category</label>
-                <div className="flex gap-1.5 flex-wrap">
-                  {['📅','🎉','🍕','🎬','🏃','🎮','🎂','✈️','🎵','💼','🏠','🤝'].map(em=>(
-                    <button key={em} onClick={()=>setEvForm(f=>({...f,emoji:em}))}
-                      className={`w-9 h-9 rounded-xl text-lg transition-all hover:scale-110 ${evForm.emoji===em?'bg-primary/10 ring-2 ring-primary scale-110':'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                      {em}
-                    </button>
-                  ))}
                 </div>
-              </div>
+              )}
 
+              {/* Title / Pergunta */}
               <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Title *</label>
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
+                  {evForm.eventType==='enquete'?'Pergunta *':'Title *'}
+                </label>
                 <input className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary"
-                  placeholder="What's happening?" value={evForm.title} onChange={e=>setEvForm(f=>({...f,title:e.target.value}))}/>
+                  placeholder={evForm.eventType==='enquete'?'Qual é a pergunta da enquete?':'What\'s happening?'}
+                  value={evForm.title} onChange={e=>setEvForm(f=>({...f,title:e.target.value}))}/>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Date</label>
-                  <input type="date" className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
-                    value={evForm.date} onChange={e=>setEvForm(f=>({...f,date:e.target.value}))}/>
-                </div>
-                <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Time</label>
-                  <input type="time" className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
-                    value={evForm.time} onChange={e=>setEvForm(f=>({...f,time:e.target.value}))}/>
-                </div>
-                <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Duration</label>
-                  <select className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
-                    value={evForm.duration} onChange={e=>setEvForm(f=>({...f,duration:e.target.value}))}>
-                    {[30,60,90,120,180,240,480].map(d=><option key={d} value={d}>{d<60?d+'min':d/60+'h'}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Color</label>
-                <div className="flex gap-2">
-                  {['#6467f2','#ec4899','#10b981','#f59e0b','#8b5cf6','#3b82f6','#ef4444','#06b6d4'].map(col=>(
-                    <button key={col} onClick={()=>setEvForm(f=>({...f,color:col}))}
-                      className={`w-8 h-8 rounded-full hover:scale-110 transition-all ${evForm.color===col?'ring-2 ring-offset-2 ring-slate-400 scale-110':''}`}
-                      style={{backgroundColor:col}}/>
+              {/* ── ENQUETE: poll options ── */}
+              {evForm.eventType==='enquete'&&(
+                <div className="space-y-2">
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Opções</label>
+                  {evForm.pollOptions.map((opt,i)=>(
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:border-primary"
+                        placeholder={`Opção ${i+1}`}
+                        value={opt}
+                        onChange={e=>{
+                          const opts=[...evForm.pollOptions]
+                          opts[i]=e.target.value
+                          setEvForm(f=>({...f,pollOptions:opts}))
+                        }}
+                      />
+                      {evForm.pollOptions.length>2&&(
+                        <button onClick={()=>setEvForm(f=>({...f,pollOptions:f.pollOptions.filter((_,idx)=>idx!==i)}))}
+                          className="w-8 h-8 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors shrink-0">
+                          <span className="material-symbols-outlined text-sm">close</span>
+                        </button>
+                      )}
+                    </div>
                   ))}
+                  {evForm.pollOptions.length<4&&(
+                    <button onClick={()=>setEvForm(f=>({...f,pollOptions:[...f.pollOptions,'']}))}
+                      className="flex items-center gap-1.5 text-xs font-bold text-primary hover:opacity-80 transition-opacity mt-1">
+                      <span className="material-symbols-outlined text-sm">add</span>
+                      Adicionar opção
+                    </button>
+                  )}
                 </div>
-              </div>
+              )}
 
-              <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Note (optional)</label>
-                <textarea className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary resize-none"
-                  rows={2} placeholder="Any details, address, link..."
-                  value={evForm.note} onChange={e=>setEvForm(f=>({...f,note:e.target.value}))}/>
-              </div>
+              {/* ── TAREFA: assignee + due date ── */}
+              {evForm.eventType==='tarefa'&&(
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Responsável</label>
+                    <select className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
+                      value={evForm.assignee} onChange={e=>setEvForm(f=>({...f,assignee:e.target.value}))}>
+                      <option value="">Todos</option>
+                      {(circle?.members||[]).map(m=>(
+                        <option key={m.id||m.userId} value={m.name}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Prazo</label>
+                    <input type="date" className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
+                      value={evForm.dueDate} onChange={e=>setEvForm(f=>({...f,dueDate:e.target.value}))}/>
+                  </div>
+                </div>
+              )}
 
-              <button onClick={()=>setEvForm(f=>({...f,pinned:!f.pinned}))}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-sm font-bold transition-all ${evForm.pinned?'border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-600':'border-slate-200 dark:border-slate-700 text-slate-400 hover:border-amber-400/50'}`}>
-                <span className="material-symbols-outlined text-sm" style={evForm.pinned?{fontVariationSettings:"'FILL' 1"}:{}}>push_pin</span>
-                {evForm.pinned?'Pinned — will show at top':'Pin this event'}
-              </button>
+              {/* ── LOCALIZACAO: address/link field ── */}
+              {evForm.eventType==='localizacao'&&(
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Endereço / Link</label>
+                  <input className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary"
+                    placeholder="Ex: Rua das Flores, 123 ou maps.google.com/..."
+                    value={evForm.location} onChange={e=>setEvForm(f=>({...f,location:e.target.value}))}/>
+                </div>
+              )}
+
+              {/* Date/Time/Duration — hidden for enquete and anuncio */}
+              {evForm.eventType!=='enquete'&&(
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Date</label>
+                    <input type="date" className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
+                      value={evForm.date} onChange={e=>setEvForm(f=>({...f,date:e.target.value}))}/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Time</label>
+                    <input type="time" className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
+                      value={evForm.time} onChange={e=>setEvForm(f=>({...f,time:e.target.value}))}/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Duration</label>
+                    <select className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
+                      value={evForm.duration} onChange={e=>setEvForm(f=>({...f,duration:e.target.value}))}>
+                      {[30,60,90,120,180,240,480].map(d=><option key={d} value={d}>{d<60?d+'min':d/60+'h'}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Color — hidden for enquete */}
+              {evForm.eventType!=='enquete'&&(
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Color</label>
+                  <div className="flex gap-2">
+                    {['#6467f2','#ec4899','#10b981','#f59e0b','#8b5cf6','#3b82f6','#ef4444','#06b6d4'].map(col=>(
+                      <button key={col} onClick={()=>setEvForm(f=>({...f,color:col}))}
+                        className={`w-8 h-8 rounded-full hover:scale-110 transition-all ${evForm.color===col?'ring-2 ring-offset-2 ring-slate-400 scale-110':''}`}
+                        style={{backgroundColor:col}}/>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Note — hidden for enquete */}
+              {evForm.eventType!=='enquete'&&(
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Note (optional)</label>
+                  <textarea className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-sm focus:outline-none focus:border-primary resize-none"
+                    rows={2} placeholder="Any details, address, link..."
+                    value={evForm.note} onChange={e=>setEvForm(f=>({...f,note:e.target.value}))}/>
+                </div>
+              )}
+
+              {/* Pin — only for evento/localizacao/tarefa */}
+              {(evForm.eventType==='evento'||evForm.eventType==='localizacao'||evForm.eventType==='tarefa')&&(
+                <button onClick={()=>setEvForm(f=>({...f,pinned:!f.pinned}))}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-sm font-bold transition-all ${evForm.pinned?'border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-600':'border-slate-200 dark:border-slate-700 text-slate-400 hover:border-amber-400/50'}`}>
+                  <span className="material-symbols-outlined text-sm" style={evForm.pinned?{fontVariationSettings:"'FILL' 1"}:{}}>push_pin</span>
+                  {evForm.pinned?'Pinned — will show at top':'Pin this event'}
+                </button>
+              )}
             </div>
 
             <div className="flex gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
               <button onClick={()=>setShowEvModal(false)} className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold">Cancel</button>
-              <button onClick={addEventFull} disabled={!evForm.title.trim()}
+              <button onClick={addEventFull}
+                disabled={
+                  !evForm.title.trim()||
+                  (evForm.eventType==='enquete'&&evForm.pollOptions.filter(o=>o.trim()).length<2)
+                }
                 className="flex-1 py-3 rounded-xl bg-primary text-white text-sm font-bold hover:opacity-90 disabled:opacity-40">
-                Create Event
+                {evForm.eventType==='enquete'?'Criar Enquete':evForm.eventType==='anuncio'?'Publicar Anúncio':evForm.eventType==='tarefa'?'Criar Tarefa':evForm.eventType==='localizacao'?'Adicionar Local':'Create Event'}
               </button>
             </div>
           </div>
