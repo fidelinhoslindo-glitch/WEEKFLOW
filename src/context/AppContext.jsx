@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { SUPABASE_ENABLED, sb, supabaseSignIn, supabaseSignUp, supabaseSignOut, supabaseRefreshToken, isSupabaseConfigured, getSupabaseCredentials } from '../utils/supabase'
+import { SUPABASE_ENABLED, sb, supabaseSignIn, supabaseSignUp, supabaseSignOut, supabaseRefreshToken } from '../utils/supabase'
 import { TOAST_TIMEOUT, FREE_TASK_LIMIT, VALID_PAGES } from '../utils/constants'
+import { ensureFirebaseAuth } from '../utils/firebase'
+import { fbSubscribeToInvites } from '../utils/firebaseCircle'
 
 const AppContext = createContext(null)
 
@@ -153,6 +155,7 @@ export function AppProvider({ children }) {
         const u = { name: res.user?.user_metadata?.name || name || email.split('@')[0], email, plan:'Free', avatar:null, avatarColor:'#6467f2', id: res.user?.id }
         save(LS.USER, u); setUserState(u)
         save(LS.AUTH, true); setIsLoggedIn(true)
+        ensureFirebaseAuth()
         syncFromCloud(token)
         const doneOnboard = load('wf_onboard_done', false) || (load(LS.ONBOARD,{}) && Object.keys(load(LS.ONBOARD,{})).length > 0)
         setPage(doneOnboard ? 'dashboard' : 'onboarding')
@@ -578,38 +581,33 @@ export function AppProvider({ children }) {
     return () => clearInterval(iv)
   }, [pushToast, sendPushNotification])
 
-  // ── Check for pending circle invites (global) ────────────────────────────
+  // ── Check for pending circle invites (global — Firebase realtime) ───────────
   useEffect(() => {
-    console.log('[invite-check] enabled:', SUPABASE_ENABLED, 'token:', !!sbToken, 'email:', user?.email)
-    if (!SUPABASE_ENABLED || !sbToken || !user?.email) return
-    const check = async () => {
-      try {
-        const { url: sbUrl, key: sbKey } = getSupabaseCredentials()
-        if (!sbUrl || !sbKey) return
-        // Use user JWT so RLS can match auth email to invite email
-        const res = await fetch(`${sbUrl}/rest/v1/circle_invites?status=eq.pending&select=*`, {
-          headers: { 'apikey': sbKey, 'Authorization': `Bearer ${sbToken}` }
-        })
-        const text = await res.text()
-        console.log('[invite-check] status:', res.status, 'body:', text.slice(0,200))
-        if (!res.ok) return
-        const invites = JSON.parse(text||'[]')
-        console.log('[invite-check] found:', invites?.length, 'for', user.email)
-        if (invites?.length) {
-          invites.forEach(inv => {
-            setNotifications(prev => {
-              if (prev.some(n => n.inviteId === inv.id)) return prev
-              return [{ id: Date.now() + Math.random(), text: `📩 ${inv.inviter_name} invited you to "${inv.circle_name}"`, time: 'just now', read: false, inviteId: inv.id, circleInvite: inv }, ...prev.slice(0, 9)]
-            })
+    if (!user?.email) return
+    // Ensure Firebase anonymous auth is active before subscribing
+    ensureFirebaseAuth().then(() => {
+      const sub = fbSubscribeToInvites(user.email, (invites) => {
+        if (!invites?.length) return
+        invites.forEach(inv => {
+          setNotifications(prev => {
+            if (prev.some(n => n.inviteId === inv.id)) return prev
+            // Normalize fields so Header.jsx openInviteModal + joinCircle work correctly
+            const circleInvite = {
+              id:          inv.id,
+              circle_id:   inv.circleId,
+              circle_name: inv.circleName,
+              circle_mode: inv.circleMode,
+              inviter_name:inv.inviterName,
+              email:       inv.email,
+            }
+            return [{ id: Date.now() + Math.random(), text: `📩 ${inv.inviterName} invited you to "${inv.circleName}"`, time: 'just now', read: false, inviteId: inv.id, circleInvite }, ...prev.slice(0, 9)]
           })
-          sendPushNotification('FlowCircle Invite', `You have ${invites.length} pending circle invite(s)!`)
-        }
-      } catch(err) { console.error('[invite-check] error:', err) }
-    }
-    check()
-    const iv = setInterval(check, 30000) // re-check every 30s
-    return () => clearInterval(iv)
-  }, [sbToken, user?.email, sendPushNotification])
+        })
+        sendPushNotification('FlowCircle Invite', `You have ${invites.length} pending circle invite(s)!`)
+      })
+      return () => sub.unsubscribe()
+    })
+  }, [user?.email, sendPushNotification])
 
   // Confetti when all today's tasks done
   useEffect(() => {

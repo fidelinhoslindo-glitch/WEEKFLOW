@@ -3,7 +3,14 @@ import { useApp } from '../context/AppContext'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { CIRCLE_MODES, loadCircles, saveCircles, generateCircleInviteLink } from '../utils/flowCircle'
-import { isSupabaseConfigured, sb, getSupabaseCredentials } from '../utils/supabase'
+import { isFirebaseConfigured } from '../utils/firebase'
+import {
+  fbListCircles, fbUpsertCircle, fbDeleteCircle,
+  fbGetMembers, fbAddMember,
+  fbGetEvents, fbAddEvent, fbDeleteEvent,
+  fbSendInvite, fbUpdateInviteStatus,
+  fbSubscribeToEvents,
+} from '../utils/firebaseCircle'
 import CollisionDetector from '../components/flowcircle/CollisionDetector'
 import CirclePulse from '../components/flowcircle/CirclePulse'
 import FreeWindow from '../components/flowcircle/FreeWindow'
@@ -167,21 +174,8 @@ function EventCard({ ev, onDelete, onPin }) {
 }
 
 export default function FlowCirclePage() {
-  const {pushToast,user,planLimits,isPro,pendingCircleInvite,setPendingCircleInvite,notifications,setNotifications,sendPushNotification,sbToken:ctxToken} = useApp()
-  // Use token from AppContext (already validated — rejects service_role/anon keys)
-  // Fall back to localStorage only if context token not available yet
-  const rawToken = typeof window!=='undefined'?localStorage.getItem('wf_token'):null
-  const sbToken = ctxToken || (() => {
-    if (!rawToken) return null
-    try {
-      const p = JSON.parse(atob(rawToken.split('.')[1]))
-      if (p.role === 'service_role' || p.role === 'anon') return null
-      if (Date.now() > p.exp * 1000) return null
-      return rawToken
-    } catch { return null }
-  })()
-  // user.id may be missing if saved before id was stored — decode from JWT as fallback
-  const userId = user?.id || (() => { try { const t=sbToken; if(!t)return null; return JSON.parse(atob(t.split('.')[1])).sub||null } catch { return null } })()
+  const {pushToast,user,planLimits,isPro,pendingCircleInvite,setPendingCircleInvite,notifications,setNotifications,sendPushNotification} = useApp()
+  const userId = user?.id || null
   const [circles,setCircles]         = useState(loadCircles)
   const [activeId,setActiveId]       = useState(()=>loadCircles()[0]?.id||null)
   const [showCreate,setShowCreate]   = useState(false)
@@ -203,24 +197,21 @@ export default function FlowCirclePage() {
   // Trigger to force a re-sync after joining a circle
   const [syncTrigger, setSyncTrigger] = useState(0)
 
-  // ── Sync from Supabase ──
+  // ── Sync from Firebase ──
   useEffect(()=>{
-    if(!isSupabaseConfigured()||!sbToken||!userId)return
+    if(!isFirebaseConfigured()||!userId)return
     setSyncing(true)
-    // RLS ensures user only sees circles they own or are a member of
-    sb.circles.list(sbToken).then(async(rawCircles)=>{
-      // For each circle, fetch members + events (RLS filters automatically)
+    fbListCircles(userId).then(async(rawCircles)=>{
       const allCircles = await Promise.all((rawCircles||[]).map(async c=>{
         const [members, events] = await Promise.all([
-          sb.circles.members(sbToken, c.id).catch(()=>[]),
-          sb.circles.events(sbToken, c.id).catch(()=>[])
+          fbGetMembers(c.id).catch(()=>[]),
+          fbGetEvents(c.id).catch(()=>[])
         ])
         return {...c,members,events}
       }))
       if(allCircles.length>0){
         const demos = loadCircles().filter(c=>c.id.startsWith('circle_demo_'))
         persist([...demos,...allCircles])
-        // Ensure active circle is set if not already pointing to a valid one
         setActiveId(prev => {
           const ids = allCircles.map(c=>c.id)
           if(prev && ids.includes(prev)) return prev
@@ -228,7 +219,7 @@ export default function FlowCirclePage() {
         })
       }
     }).catch(()=>{}).finally(()=>setSyncing(false))
-  },[sbToken,userId,syncTrigger])
+  },[userId,syncTrigger])
 
   // Invite check moved to AppContext (global — works on any page)
 
@@ -240,32 +231,32 @@ export default function FlowCirclePage() {
       pushToast('You are already in this circle!','info')
       return
     }
-    // Step 1: Add self as member first (RLS allows inserting own user_id)
-    // After becoming a member, RLS grants read access to the circle
-    if(isSupabaseConfigured()&&sbToken&&userId){
-      await sb.circles.addMember(sbToken,{circle_id:invite.circleId,user_id:userId,name:user?.name||'You',role:'member',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch((e)=>{ console.warn('addMember failed:', e.message) })
-      // Mark invite as accepted (RLS allows recipient to update their own invites)
-      const { url, key } = getSupabaseCredentials()
-      await fetch(`${url}/rest/v1/circle_invites?circle_id=eq.${invite.circleId}&email=eq.${encodeURIComponent(user?.email||'')}`,{
-        method:'PATCH',
-        headers:{'Content-Type':'application/json','apikey':key,'Authorization':`Bearer ${sbToken}`},
-        body:JSON.stringify({status:'accepted'})
-      }).catch(()=>{})
+    if(isFirebaseConfigured()&&userId){
+      // Add self as member
+      await fbAddMember(invite.circleId, {
+        userId, name:user?.name||'You', role:'member',
+        avatar:user?.avatarColor||'#6467f2', status:'online',
+        email:user?.email||'', joinedAt:new Date().toISOString()
+      }).catch(e=>{ console.warn('fbAddMember failed:', e.message) })
+      // Mark matching invite as accepted
+      if(invite.inviteId){
+        await fbUpdateInviteStatus(invite.inviteId, 'accepted').catch(()=>{})
+      }
     }
-    // Step 2: Now fetch circle data (RLS allows since we're a member now)
-    let circleData = null
+    // Fetch fresh circle data from Firestore
     let members = []
     let events = []
-    if(isSupabaseConfigured()&&sbToken){
+    let circleData = null
+    if(isFirebaseConfigured()){
       try {
-        const [cData, mData, eData] = await Promise.all([
-          sb.circles.list(sbToken).then(list=>list.find(c=>c.id===invite.circleId)||null),
-          sb.circles.members(sbToken, invite.circleId),
-          sb.circles.events(sbToken, invite.circleId)
+        const [mData, eData, cList] = await Promise.all([
+          fbGetMembers(invite.circleId),
+          fbGetEvents(invite.circleId),
+          fbListCircles(userId).catch(()=>[])
         ])
-        circleData = cData
         members = mData || []
         events = eData || []
+        circleData = cList.find(c=>c.id===invite.circleId)||null
       } catch {}
     }
     const nc={
@@ -275,14 +266,13 @@ export default function FlowCirclePage() {
       color:circleData?.color||'#6467f2',
       members,
       events,
-      createdAt:circleData?.created_at||new Date().toISOString()
+      createdAt:circleData?.createdAt||new Date().toISOString()
     }
     persist(prev => {
       if(prev.find(c=>c.id===nc.id)) return prev
       return [...prev, nc]
     })
     setActiveId(nc.id)
-    // Trigger re-sync to get fresh data
     setTimeout(()=>setSyncTrigger(t=>t+1), 500)
     pushToast(`🎉 You joined "${nc.name}"!`,'success')
     setPendingCircleInvite(null)
@@ -292,12 +282,13 @@ export default function FlowCirclePage() {
   useEffect(()=>{ if(pendingCircleInvite) joinCircle(pendingCircleInvite) },[pendingCircleInvite]) // eslint-disable-line
 
   const createCircle = async(f)=>{
-    const nc={...f,id:'circ_'+Date.now(),members:[{id:userId||'me',name:user?.name||'You',role:'admin',avatar:user?.avatarColor||'#6467f2',status:'online'}],events:[],createdAt:new Date().toISOString()}
+    const memberData = { userId:userId||'me', name:user?.name||'You', role:'admin', avatar:user?.avatarColor||'#6467f2', status:'online', email:user?.email||'', joinedAt:new Date().toISOString() }
+    const nc={...f,id:'circ_'+Date.now(),members:[{id:userId||'me',...memberData}],events:[],createdAt:new Date().toISOString()}
     persist([...circles,nc]);setActiveId(nc.id);setShowCircleList(false)
-    if(isSupabaseConfigured()&&sbToken&&userId){
+    if(isFirebaseConfigured()&&userId){
       try {
-        await sb.circles.upsert(sbToken,{id:nc.id,owner_id:userId,mode:nc.mode,name:nc.name,color:nc.color,created_at:nc.createdAt})
-        await sb.circles.addMember(sbToken,{circle_id:nc.id,user_id:userId,name:user?.name||'You',role:'admin',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch(()=>{})
+        await fbUpsertCircle({id:nc.id,ownerId:userId,mode:nc.mode,name:nc.name,color:nc.color,createdAt:nc.createdAt,ownerEmail:user?.email||''})
+        await fbAddMember(nc.id, memberData).catch(()=>{})
       } catch(err) {
         pushToast(`⚠️ Circle sync failed: ${err.message}`,'error')
       }
@@ -308,15 +299,15 @@ export default function FlowCirclePage() {
   const deleteCircle = async(id)=>{
     const upd=circles.filter(c=>c.id!==id)
     persist(upd);setActiveId(upd[0]?.id||null)
-    if(isSupabaseConfigured()&&sbToken)await sb.circles.delete(sbToken,id).catch(()=>{})
+    if(isFirebaseConfigured())await fbDeleteCircle(id).catch(()=>{})
     pushToast('Circle deleted.','info')
   }
 
   const addEvent = async()=>{
     if(!circle||!newEvTitle.trim())return
-    const ev={id:'ev_'+Date.now(),title:newEvTitle.trim(),date:new Date().toISOString().split('T')[0],time:'18:00',duration:60,shared:true,color:circle.color||'#6467f2',circle_id:circle.id}
+    const ev={id:'ev_'+Date.now(),title:newEvTitle.trim(),date:new Date().toISOString().split('T')[0],time:'18:00',duration:60,shared:true,color:circle.color||'#6467f2',circleId:circle.id}
     persist(circles.map(c=>c.id===circle.id?{...c,events:[...(c.events||[]),ev]}:c));setNewEvTitle('')
-    if(isSupabaseConfigured()&&sbToken)await sb.circles.addEvent(sbToken,ev).catch(()=>{})
+    if(isFirebaseConfigured())await fbAddEvent(circle.id, ev).catch(()=>{})
     pushToast('📅 Event added!','success')
   }
 
@@ -326,10 +317,10 @@ export default function FlowCirclePage() {
       id:'ev_'+Date.now(),title:evForm.title.trim(),date:evForm.date,time:evForm.time,
       duration:Number(evForm.duration),color:evForm.color,emoji:evForm.emoji,
       note:evForm.note.trim(),image:evForm.image,pinned:evForm.pinned,
-      createdBy:user?.name||'You',shared:true,circle_id:circle.id,
+      createdBy:user?.name||'You',shared:true,circleId:circle.id,
     }
     persist(circles.map(c=>c.id===circle.id?{...c,events:[...(c.events||[]),ev]}:c))
-    if(isSupabaseConfigured()&&sbToken)await sb.circles.addEvent(sbToken,ev).catch(()=>{})
+    if(isFirebaseConfigured())await fbAddEvent(circle.id, ev).catch(()=>{})
     pushToast('Event created!','success')
     setShowEvModal(false)
     setEvForm({ title:'', date:new Date().toISOString().split('T')[0], time:'18:00', duration:60, color:'#6467f2', emoji:'📅', note:'', image:null, pinned:false })
@@ -341,29 +332,31 @@ export default function FlowCirclePage() {
 
   const deleteEvent = async(eid)=>{
     persist(circles.map(c=>c.id===circle.id?{...c,events:(c.events||[]).filter(e=>e.id!==eid)}:c))
-    if(isSupabaseConfigured()&&sbToken)await sb.circles.deleteEvent(sbToken,eid).catch(()=>{})
+    if(isFirebaseConfigured())await fbDeleteEvent(circle.id, eid).catch(()=>{})
   }
 
   const sendInvite = async()=>{
     if(!inviteEmail.trim()||!circle)return
     const link=generateCircleInviteLink(circle.id,circle.name,circle.mode)
     setInviteLink(link)
-    if(isSupabaseConfigured()&&sbToken){
-      // Store invite in Supabase — invitee will see it as notification
-      // RLS allows circle members to insert invites for their circle
+    if(isFirebaseConfigured()){
       try {
-        // Ensure circle exists in Supabase before inserting invite (FK constraint)
-        await sb.circles.upsert(sbToken,{id:circle.id,owner_id:userId,mode:circle.mode,name:circle.name,color:circle.color||'#6467f2',created_at:circle.createdAt||new Date().toISOString()}).catch(()=>{})
-        // Also ensure owner is a member
-        await sb.circles.addMember(sbToken,{circle_id:circle.id,user_id:userId,name:user?.name||'You',role:'admin',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch(()=>{})
-        await sb.circles.invite(sbToken, { circle_id:circle.id, circle_name:circle.name, circle_mode:circle.mode, inviter_name:user?.name||'Someone', email:inviteEmail.trim(), status:'pending', created_at:new Date().toISOString() })
-        // Add notification for inviter
-        setNotifications(prev=>[{id:Date.now(),text:`📤 Invite sent to ${inviteEmail.trim()} for "${circle.name}"`,time:'just now',read:false},...prev.slice(0,9)])
-        sendPushNotification('Invite Sent',`Invite sent to ${inviteEmail.trim()}`)
-        pushToast(`📩 Invite sent to ${inviteEmail.trim()}!`,'success')
+        // Ensure circle doc + owner member exist in Firestore
+        await fbUpsertCircle({id:circle.id,ownerId:userId,mode:circle.mode,name:circle.name,color:circle.color||'#6467f2',createdAt:circle.createdAt||new Date().toISOString(),ownerEmail:user?.email||''}).catch(()=>{})
+        await fbAddMember(circle.id, {userId,name:user?.name||'You',role:'admin',avatar:user?.avatarColor||'#6467f2',status:'online',email:user?.email||'',joinedAt:new Date().toISOString()}).catch(()=>{})
+        const res = await fbSendInvite({
+          circleId:circle.id, circleName:circle.name, circleMode:circle.mode,
+          inviterName:user?.name||'Someone', email:inviteEmail.trim()
+        })
+        if(res.ok){
+          setNotifications(prev=>[{id:Date.now(),text:`📤 Invite sent to ${inviteEmail.trim()} for "${circle.name}"`,time:'just now',read:false},...prev.slice(0,9)])
+          sendPushNotification('Invite Sent',`Invite sent to ${inviteEmail.trim()}`)
+          pushToast(`📩 Invite sent to ${inviteEmail.trim()}!`,'success')
+        } else {
+          pushToast(`❌ Invite failed: ${res.error}`,'error')
+        }
       } catch(err) {
-        console.error('Invite failed:',err)
-        pushToast(`❌ Invite failed: ${err.message}. Run the Setup SQL in Supabase first.`,'error')
+        pushToast(`❌ Invite failed: ${err.message}`,'error')
       }
     } else {
       pushToast('🔗 Share this link with your friend!','info')
@@ -375,9 +368,8 @@ export default function FlowCirclePage() {
     try{await navigator.clipboard.writeText(inviteLink);setCopied(true);pushToast('🔗 Link copied!','success');setTimeout(()=>setCopied(false),2500)}catch{}
   }
 
-  const voteOption = async(opt)=>{
+  const voteOption = (opt)=>{
     persist(circles.map(c=>c.id!==circle.id||!c.pendingPoll?c:{...c,pendingPoll:{...c.pendingPoll,votes:{...c.pendingPoll.votes,[opt]:(c.pendingPoll.votes[opt]||0)+1}}}))
-    if(isSupabaseConfigured()&&sbToken&&userId)await sb.circles.vote(sbToken,{circle_id:circle.id,option:opt,user_id:userId}).catch(()=>{})
     pushToast(`Voted for "${opt}"! 🗳️`,'success')
   }
 
@@ -387,7 +379,7 @@ export default function FlowCirclePage() {
     <div className="flex min-h-screen bg-bg-light dark:bg-bg-dark">
       <Sidebar/>
       <div className="flex-1 flex flex-col min-w-0">
-        <Header title="FlowCircle" subtitle={isSupabaseConfigured()?(syncing?'Syncing...':'Cloud synced ☁️'):'Local mode — connect Supabase for real-time sync'}/>
+        <Header title="FlowCircle" subtitle={isFirebaseConfigured()?(syncing?'Syncing...':'Firebase synced ☁️'):'Local mode — Firebase not configured'}/>
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
 
           {/* ── Mobile circle selector bar ── */}

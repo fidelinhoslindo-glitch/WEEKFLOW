@@ -1,7 +1,7 @@
 import { memo, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { useLanguage } from '../context/LanguageContext'
-import { getSupabaseCredentials } from '../utils/supabase'
+import { fbGetMembers, fbUpdateInviteStatus } from '../utils/firebaseCircle'
 
 // Keyboard shortcut Ctrl+K is handled centrally in AppContext — no duplicate listener here.
 function Header({ title, subtitle }) {
@@ -24,10 +24,7 @@ function Header({ title, subtitle }) {
     let members = []
     try {
       // User may not be a member yet, so this might return empty — that's expected
-      const { url, key } = getSupabaseCredentials()
-      const userToken = localStorage.getItem('wf_token') || key
-      const mRes = await fetch(`${url}/rest/v1/circle_members?circle_id=eq.${n.circleInvite.circle_id}&select=*`, { headers: { 'apikey': key, 'Authorization': `Bearer ${userToken}` } })
-      if (mRes.ok) members = await mRes.json() || []
+      members = await fbGetMembers(n.circleInvite.circle_id)
     } catch {}
     setLoadingInvite(false)
     setInviteModal(prev => prev ? { ...prev, members } : null)
@@ -50,13 +47,7 @@ function Header({ title, subtitle }) {
   const declineInvite = async () => {
     if (!inviteModal) return
     try {
-      const { url, key } = getSupabaseCredentials()
-      const userToken = localStorage.getItem('wf_token') || key
-      await fetch(`${url}/rest/v1/circle_invites?id=eq.${inviteModal.invite.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'apikey': key, 'Authorization': `Bearer ${userToken}` },
-        body: JSON.stringify({ status: 'declined' })
-      })
+      await fbUpdateInviteStatus(inviteModal.invite.id, 'declined')
     } catch {}
     setNotifications(prev => prev.filter(x => x.id !== inviteModal.notifId))
     setInviteModal(null)
