@@ -148,11 +148,16 @@ create policy "invites_circle_member_read"
     )
   );
 
+-- Circle members OR circle owner can insert invites
 create policy "invites_member_insert"
   on public.circle_invites for insert with check (
     exists (
       select 1 from public.circle_members cm
       where cm.circle_id = public.circle_invites.circle_id and cm.user_id = auth.uid()
+    )
+    or exists (
+      select 1 from public.circles c
+      where c.id = public.circle_invites.circle_id and c.owner_id = auth.uid()
     )
   );
 
