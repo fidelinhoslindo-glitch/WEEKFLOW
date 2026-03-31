@@ -71,7 +71,18 @@ export default function LoginPage() {
       if (err.message === 'email-not-verified') {
         setView('verify-email')
       } else {
-        setError(err.message || t.common.unexpectedError)
+        const code = err.code || ''
+        const friendlyError =
+          code === 'auth/email-already-in-use'    ? 'Este email já está cadastrado. Tente fazer login.' :
+          code === 'auth/invalid-email'            ? 'Email inválido.' :
+          code === 'auth/weak-password'            ? 'Senha fraca. Use no mínimo 6 caracteres.' :
+          code === 'auth/user-not-found'           ? 'Email não encontrado.' :
+          code === 'auth/wrong-password'           ? 'Senha incorreta.' :
+          code === 'auth/invalid-credential'       ? 'Email ou senha incorretos.' :
+          code === 'auth/too-many-requests'        ? 'Muitas tentativas. Aguarde um momento.' :
+          code === 'auth/network-request-failed'   ? 'Erro de conexão. Verifique sua internet.' :
+          err.message || t.common.unexpectedError
+        setError(friendlyError)
       }
     }
     setLoading(false)
@@ -87,7 +98,12 @@ export default function LoginPage() {
       // popup: AppContext._finishLogin handles navigation
       // redirect: fbGetRedirectResult handles it on next mount
     } catch (err) {
-      setError(err.message || 'Google login failed.')
+      const code = err.code || ''
+      setError(
+        code === 'auth/popup-closed-by-user' ? 'Login cancelado.' :
+        code === 'auth/network-request-failed' ? 'Erro de conexão. Verifique sua internet.' :
+        'Falha no login com Google. Tente novamente.'
+      )
     }
     setOauthLoading('')
   }
