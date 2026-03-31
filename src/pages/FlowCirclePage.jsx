@@ -232,7 +232,7 @@ export default function FlowCirclePage() {
     // Step 1: Add self as member first (RLS allows inserting own user_id)
     // After becoming a member, RLS grants read access to the circle
     if(isSupabaseConfigured()&&sbToken&&userId){
-      await sb.circles.addMember(sbToken,{circle_id:invite.circleId,user_id:userId,name:user?.name||'You',role:'member',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch(()=>{})
+      await sb.circles.addMember(sbToken,{circle_id:invite.circleId,user_id:userId,name:user?.name||'You',role:'member',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch((e)=>{ console.warn('addMember failed:', e.message) })
       // Mark invite as accepted (RLS allows recipient to update their own invites)
       const { url, key } = getSupabaseCredentials()
       await fetch(`${url}/rest/v1/circle_invites?circle_id=eq.${invite.circleId}&email=eq.${encodeURIComponent(user?.email||'')}`,{
@@ -284,8 +284,12 @@ export default function FlowCirclePage() {
     const nc={...f,id:'circ_'+Date.now(),members:[{id:userId||'me',name:user?.name||'You',role:'admin',avatar:user?.avatarColor||'#6467f2',status:'online'}],events:[],createdAt:new Date().toISOString()}
     persist([...circles,nc]);setActiveId(nc.id);setShowCircleList(false)
     if(isSupabaseConfigured()&&sbToken&&userId){
-      await sb.circles.upsert(sbToken,{id:nc.id,owner_id:userId,mode:nc.mode,name:nc.name,color:nc.color,created_at:nc.createdAt}).catch(()=>{})
-      await sb.circles.addMember(sbToken,{circle_id:nc.id,user_id:userId,name:user?.name||'You',role:'admin',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch(()=>{})
+      try {
+        await sb.circles.upsert(sbToken,{id:nc.id,owner_id:userId,mode:nc.mode,name:nc.name,color:nc.color,created_at:nc.createdAt})
+        await sb.circles.addMember(sbToken,{circle_id:nc.id,user_id:userId,name:user?.name||'You',role:'admin',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch(()=>{})
+      } catch(err) {
+        pushToast(`⚠️ Circle sync failed: ${err.message}`,'error')
+      }
     }
     pushToast(`🎉 "${nc.name}" created!`,'success')
   }
@@ -337,6 +341,10 @@ export default function FlowCirclePage() {
       // Store invite in Supabase — invitee will see it as notification
       // RLS allows circle members to insert invites for their circle
       try {
+        // Ensure circle exists in Supabase before inserting invite (FK constraint)
+        await sb.circles.upsert(sbToken,{id:circle.id,owner_id:userId,mode:circle.mode,name:circle.name,color:circle.color||'#6467f2',created_at:circle.createdAt||new Date().toISOString()}).catch(()=>{})
+        // Also ensure owner is a member
+        await sb.circles.addMember(sbToken,{circle_id:circle.id,user_id:userId,name:user?.name||'You',role:'admin',avatar:user?.avatarColor||'#6467f2',status:'online'}).catch(()=>{})
         await sb.circles.invite(sbToken, { circle_id:circle.id, circle_name:circle.name, circle_mode:circle.mode, inviter_name:user?.name||'Someone', email:inviteEmail.trim(), status:'pending', created_at:new Date().toISOString() })
         // Add notification for inviter
         setNotifications(prev=>[{id:Date.now(),text:`📤 Invite sent to ${inviteEmail.trim()} for "${circle.name}"`,time:'just now',read:false},...prev.slice(0,9)])
