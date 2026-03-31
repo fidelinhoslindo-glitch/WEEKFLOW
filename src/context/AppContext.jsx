@@ -213,7 +213,11 @@ export function AppProvider({ children }) {
     setUserState(DEMO_USER)
     save(LS.AUTH, true)
     setIsLoggedIn(true)
+    // Skip tour for demo mode
+    localStorage.setItem('wf_tour_done', 'true')
     setPage('dashboard')
+    // Expose for Playwright recorder
+    if (typeof window !== 'undefined') window.__weekflowDemoReady = true
   }, []) // eslint-disable-line
 
   const logout = async () => {
@@ -636,6 +640,9 @@ export function AppProvider({ children }) {
   // ── Derived ───────────────────────────────────────────────────────────────
   const getTasksForDay = (day) => tasks.filter(t => t.day === day)
   const completionRate = tasks.length ? Math.round((tasks.filter(t=>t.completed).length / tasks.length) * 100) : 0
+
+  // Expose loginDemo globally for Playwright recorder
+  if (typeof window !== 'undefined') window.__loginDemo = loginDemo
 
   return (
     <AppContext.Provider value={{
