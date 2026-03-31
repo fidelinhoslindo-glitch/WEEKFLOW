@@ -116,7 +116,12 @@ export default function LoginPage() {
       await fbResendVerificationEmail()
       setResendMsg('Email reenviado! Verifique sua caixa de entrada.')
     } catch (err) {
-      setResendMsg(err.message || 'Erro ao reenviar email.')
+      const code = err.code || ''
+      setResendMsg(
+        code === 'auth/too-many-requests'      ? 'Aguarde alguns minutos antes de reenviar.' :
+        code === 'auth/network-request-failed' ? 'Erro de conexão. Verifique sua internet.' :
+        'Erro ao reenviar. Tente novamente em alguns minutos.'
+      )
     }
     setResendLoading(false)
   }
