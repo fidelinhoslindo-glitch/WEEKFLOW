@@ -108,10 +108,18 @@ export function AppProvider({ children }) {
   // ── Auth ──────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn] = useState(() => load(LS.AUTH, false))
   const [sbToken,    setSbToken]    = useState(() => {
-    // On init: if token is expired, clear it so refresh kicks in via useEffect
+    // On init: if token is expired or is a service/anon key, clear it
     const t = load(LS.TOKEN, null)
     if (!t) return null
-    try { const exp = JSON.parse(atob(t.split('.')[1])).exp * 1000; if (Date.now() > exp) return null } catch {}
+    try {
+      const payload = JSON.parse(atob(t.split('.')[1]))
+      if (Date.now() > payload.exp * 1000) return null
+      // Reject service_role and anon keys — only accept user JWTs
+      if (payload.role === 'service_role' || payload.role === 'anon') {
+        localStorage.removeItem(LS.TOKEN)
+        return null
+      }
+    } catch {}
     return t
   })
   const [user, setUserState]        = useState(() => load(LS.USER, { name:'', email:'', plan:'Free', avatar:null, avatarColor:'#6467f2' }))
