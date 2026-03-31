@@ -642,7 +642,10 @@ export function AppProvider({ children }) {
   const completionRate = tasks.length ? Math.round((tasks.filter(t=>t.completed).length / tasks.length) * 100) : 0
 
   // Expose loginDemo globally for Playwright recorder
-  if (typeof window !== 'undefined') window.__loginDemo = loginDemo
+  if (typeof window !== 'undefined') {
+    window.__loginDemo = loginDemo
+    window.__navigate = navigate
+  }
 
   return (
     <AppContext.Provider value={{

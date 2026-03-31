@@ -1,7 +1,13 @@
 /**
- * WeekFlow Demo Recorder
- * Grava automaticamente o reel de 30s do app usando Playwright
- * Uso: node scripts/record-demo.cjs
+ * WeekFlow Demo Recorder — Reel 30s
+ * Roteiro:
+ *  0-3s   Landing page abrindo
+ *  3-8s   Dashboard + scroll semana
+ *  8-13s  Planner semanal com tarefas
+ * 13-18s  Add Task modal (digitando)
+ * 18-23s  FlowCircle com membros
+ * 23-28s  AI Chat respondendo
+ * 28-30s  Dashboard final / logo
  */
 
 const { chromium } = require('playwright')
@@ -11,15 +17,19 @@ const fs = require('fs')
 const BASE_URL = 'http://localhost:5175'
 const OUT_DIR = path.join(__dirname, '..', 'demo-video')
 
-async function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms))
-}
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-async function typeSlowly(locator, text, delay = 55) {
+const typeSlowly = async (locator, text, delay = 55) => {
   for (const char of text) {
     await locator.type(char)
     await sleep(delay)
   }
+}
+
+// Navigate via window.__navigate exposed by AppContext
+const goTo = async (page, route) => {
+  await page.evaluate(r => window.__navigate && window.__navigate(r), route)
+  await sleep(800)
 }
 
 ;(async () => {
@@ -27,146 +37,144 @@ async function typeSlowly(locator, text, delay = 55) {
 
   const browser = await chromium.launch({
     headless: false,
-    args: ['--window-size=1280,720', '--window-position=0,0'],
+    args: ['--window-size=1280,720', '--window-position=0,0', '--start-maximized'],
   })
 
   const context = await browser.newContext({
     viewport: { width: 1280, height: 720 },
-    recordVideo: {
-      dir: OUT_DIR,
-      size: { width: 1280, height: 720 },
-    },
+    recordVideo: { dir: OUT_DIR, size: { width: 1280, height: 720 } },
   })
 
   const page = await context.newPage()
 
-  console.log('🎬 Iniciando gravação...')
+  // Supress dialog popups
+  page.on('dialog', d => d.dismiss().catch(() => {}))
 
-  // ── Cena 1: Landing page com logo (0-3s) ──────────────────────────────────
-  console.log('📍 Cena 1: Landing page')
+  console.log('🎬 Gravando...')
+
+  // ── CENA 1: Landing page (0-3s) ───────────────────────────────────────────
+  console.log('📍 1/7 Landing page')
   await page.goto(BASE_URL)
   await page.waitForLoadState('networkidle')
-  await sleep(2000)
-
-  // ── Cena 2: Navegar para Login e disparar demo (3-5s) ─────────────────────
-  console.log('📍 Cena 2: Ativando modo demo')
-  // Click Log In button on landing
-  await page.locator('button:has-text("Log In"), a:has-text("Log In")').first().click().catch(() => {})
-  await sleep(1000)
-
-  // Marca tour como concluído antes de logar (evita overlay bloqueante)
-  await page.evaluate(() => localStorage.setItem('wf_tour_done', 'true'))
-
-  // Agora chama loginDemo via window (exposto pelo AppContext)
-  await page.waitForFunction(() => typeof window.__loginDemo === 'function', { timeout: 5000 })
-  await page.evaluate(() => window.__loginDemo())
-  await sleep(1500)
-
-  // Se o tour overlay ainda apareceu, clica no backdrop para fechar
-  const tourOverlay = page.locator('.fixed.inset-0.z-\\[150\\] .absolute.inset-0').first()
-  if (await tourOverlay.isVisible().catch(() => false)) {
-    await tourOverlay.click({ force: true })
-    await sleep(500)
-  }
-
-  // ── Cena 3: Week View — scroll suave (5-10s) ──────────────────────────────
-  console.log('📍 Cena 3: Week view')
-  await page.waitForFunction(() => window.__weekflowDemoReady === true, { timeout: 5000 }).catch(() => {})
-  await sleep(500)
-
-  // Scroll suave para mostrar as tarefas
-  for (let i = 0; i < 4; i++) {
-    await page.mouse.wheel(0, 180)
-    await sleep(500)
-  }
-  await sleep(400)
-  for (let i = 0; i < 4; i++) {
-    await page.mouse.wheel(0, -180)
-    await sleep(400)
-  }
-  await sleep(600)
-
-  // ── Cena 4: Abrir Add Task modal (10-16s) ─────────────────────────────────
-  console.log('📍 Cena 4: Add task')
-  // Remove any tour/overlay that blocks interaction
-  await page.evaluate(() => {
-    document.querySelectorAll('.fixed.inset-0').forEach(el => {
-      if (el.style.zIndex > 100 || el.className.includes('z-[150]') || el.className.includes('z-\\[150\\]')) {
-        el.remove()
-      }
-    })
-    // Also try to find and remove the tour overlay by its specific class pattern
-    document.querySelectorAll('[class*="z-[150]"]').forEach(el => el.remove())
-  })
-  await sleep(300)
-  const addBtn = page.locator('[data-tour="add-task"]').first()
-  await addBtn.click({ force: true })
-  await sleep(700)
-
-  // Digitar tarefa
-  const taskInput = page.locator('input[placeholder*="tarefa"], input[placeholder*="task"], input[placeholder*="Tarefa"]').first()
-  const taskInputVisible = await taskInput.isVisible().catch(() => false)
-  if (taskInputVisible) {
-    await taskInput.click()
-    await typeSlowly(taskInput, 'Reunião com cliente às 14h')
-    await sleep(1200)
-  }
-
-  // Fechar modal
-  await page.keyboard.press('Escape')
-  await sleep(700)
-
-  // ── Cena 5: Navegar para FlowCircle (16-21s) ──────────────────────────────
-  console.log('📍 Cena 5: FlowCircle')
-  // Tenta nav sidebar/bottom bar
-  await page.locator('button[aria-label*="FlowCircle"], button[aria-label*="circle"]').first().click().catch(() => {})
-  await page.locator('[data-nav="flowcircle"]').first().click().catch(() => {})
-  await page.locator('text=FlowCircle').first().click().catch(() => {})
   await sleep(2500)
 
-  // ── Cena 6: Abrir AI Chat (21-26s) ────────────────────────────────────────
-  console.log('📍 Cena 6: AI Chat')
-  const aiBtn = page.locator('[data-tour="ai-btn"]').first()
-  const aiBtnVisible = await aiBtn.isVisible().catch(() => false)
-  if (aiBtnVisible) {
-    await aiBtn.click()
-    await sleep(1500)
+  // ── CENA 2: Login demo → Dashboard (3-5s) ─────────────────────────────────
+  console.log('📍 2/7 Demo login')
+  await page.evaluate(() => localStorage.setItem('wf_tour_done', 'true'))
+  await page.waitForFunction(() => typeof window.__loginDemo === 'function', { timeout: 8000 })
+  await page.evaluate(() => window.__loginDemo())
+  await sleep(1200)
 
-    const chatInput = page.locator('textarea').last()
-    const chatVisible = await chatInput.isVisible().catch(() => false)
-    if (chatVisible) {
-      await chatInput.click()
-      await typeSlowly(chatInput, 'Organize minha semana')
-      await sleep(1200)
-    }
-    await page.keyboard.press('Escape')
-    await sleep(500)
+  // Esconde tour se aparecer (CSS seguro — não quebra React)
+  await page.addStyleTag({ content: `
+    [class*="z-[150]"], [class*="z-[200]"] { display: none !important; }
+  `})
+
+  // Clica em Skip tour se aparecer
+  await page.locator('button:has-text("Skip"), button:has-text("Skip tour")').first()
+    .click({ timeout: 1500 }).catch(() => {})
+  await sleep(600)
+
+  // ── CENA 3: Dashboard — stats cards (5-8s) ────────────────────────────────
+  console.log('📍 3/7 Dashboard')
+  // Ensure on dashboard
+  await page.evaluate(() => window.__navigate && window.__navigate('dashboard'))
+  await sleep(1000)
+  // Scroll down slowly to show week overview
+  await page.mouse.wheel(0, 300)
+  await sleep(700)
+  await page.mouse.wheel(0, 300)
+  await sleep(700)
+  await page.mouse.wheel(0, -600)
+  await sleep(600)
+
+  // ── CENA 4: Planner semanal (8-13s) ───────────────────────────────────────
+  console.log('📍 4/7 Planner')
+  await page.evaluate(() => window.__navigate && window.__navigate('planner'))
+  await sleep(1200)
+  // Scroll to show tasks across days
+  await page.mouse.wheel(0, 250)
+  await sleep(600)
+  await page.mouse.wheel(0, 250)
+  await sleep(600)
+  await page.mouse.wheel(0, -500)
+  await sleep(700)
+
+  // ── CENA 5: Add Task modal (13-18s) ───────────────────────────────────────
+  console.log('📍 5/7 Add task')
+  // Hide tour overlay again after navigation
+  await page.addStyleTag({ content: '[class*="z-[150]"] { display: none !important; }' })
+  await sleep(200)
+
+  const addBtn = page.locator('[data-tour="add-task"]').first()
+  await addBtn.click({ force: true, timeout: 5000 }).catch(async () => {
+    // Fallback: trigger via keyboard shortcut
+    await page.keyboard.press('Control+k')
+  })
+  await sleep(700)
+
+  // Type task name
+  const taskInput = page.locator('input[placeholder*="arefa"], input[placeholder*="ask"]').first()
+  if (await taskInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await taskInput.click()
+    await typeSlowly(taskInput, 'Reunião com cliente')
+    await sleep(800)
   }
 
-  // ── Cena 7: Voltar para tela inicial (26-30s) ─────────────────────────────
-  console.log('📍 Cena 7: Tela final')
-  await page.evaluate(() => window.__loginDemo && window.__loginDemo())
-  await sleep(500)
-  // Navegar para dashboard limpamente
-  await page.evaluate(() => { try { window.__loginDemo() } catch(e) {} })
-  await sleep(3000)
+  // Close modal
+  await page.keyboard.press('Escape')
+  await sleep(600)
+
+  // ── CENA 6: FlowCircle (18-23s) ───────────────────────────────────────────
+  console.log('📍 6/7 FlowCircle')
+  await page.evaluate(() => window.__navigate && window.__navigate('flowcircle'))
+  await sleep(2500)
+
+  // ── CENA 7: AI Chat (23-28s) ──────────────────────────────────────────────
+  console.log('📍 7/7 AI Chat')
+  await page.evaluate(() => window.__navigate && window.__navigate('dashboard'))
+  await sleep(700)
+
+  const aiBtn = page.locator('[data-tour="ai-btn"]').first()
+  if (await aiBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await aiBtn.click()
+    await sleep(1000)
+    const chatInput = page.locator('textarea').last()
+    if (await chatInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await chatInput.click()
+      await typeSlowly(chatInput, 'Organize minha semana')
+      await sleep(1500)
+    }
+    // Close chat
+    await page.keyboard.press('Escape')
+    await sleep(400)
+  }
+
+  // ── CENA FINAL: Dashboard + logo (28-30s) ─────────────────────────────────
+  console.log('📍 Cena final')
+  await page.evaluate(() => window.__navigate && window.__navigate('dashboard'))
+  await sleep(2500)
 
   // ── Finalizar ──────────────────────────────────────────────────────────────
-  console.log('✅ Encerrando gravação...')
+  console.log('✅ Encerrando...')
   await context.close()
   await browser.close()
 
-  // Renomear o arquivo gerado
-  await sleep(1000) // aguarda flush do vídeo
-  const files = fs.readdirSync(OUT_DIR).filter(f => f.endsWith('.webm'))
-  if (files.length > 0) {
-    const latest = files.map(f => ({ f, t: fs.statSync(path.join(OUT_DIR, f)).mtimeMs })).sort((a,b) => b.t - a.t)[0].f
-    const newName = `weekflow-reel-${Date.now()}.webm`
-    fs.renameSync(path.join(OUT_DIR, latest), path.join(OUT_DIR, newName))
-    console.log(`\n🎥 Vídeo salvo em: demo-video/${newName}`)
-    console.log('📝 Converta para MP4 com:')
-    console.log(`   ffmpeg -i "demo-video/${newName}" -c:v libx264 -crf 18 -preset slow "demo-video/weekflow-reel.mp4"`)
-  } else {
-    console.log('⚠️  Nenhum arquivo .webm encontrado em', OUT_DIR)
+  await sleep(1200)
+  const files = fs.readdirSync(OUT_DIR)
+    .filter(f => f.endsWith('.webm') && !f.startsWith('weekflow-reel'))
+  const allWebm = fs.readdirSync(OUT_DIR)
+    .filter(f => f.endsWith('.webm'))
+    .map(f => ({ f, t: fs.statSync(path.join(OUT_DIR, f)).mtimeMs }))
+    .sort((a, b) => b.t - a.t)
+
+  if (allWebm.length > 0) {
+    const latest = allWebm[0].f
+    const newName = `weekflow-reel-v3-${Date.now()}.webm`
+    if (latest !== newName) {
+      fs.renameSync(path.join(OUT_DIR, latest), path.join(OUT_DIR, newName))
+    }
+    console.log(`\n🎥 Vídeo: demo-video/${newName}`)
+    console.log(`📝 MP4: ffmpeg -i "demo-video/${newName}" -c:v libx264 -crf 18 "demo-video/weekflow-reel-v3.mp4"`)
   }
 })()
