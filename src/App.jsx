@@ -38,6 +38,8 @@ import FlowCircleWidget from './components/FlowCircleWidget'
 import SetupWizard    from './components/SetupWizard'
 import TrialBanner    from './components/TrialBanner'
 import TrialExpiredModal from './components/TrialExpiredModal'
+import OfflineBanner  from './components/OfflineBanner'
+import NotificationPrompt from './components/NotificationPrompt'
 
 // ── Page map ─────────────────────────────────────────────────────────────────
 const PAGES = {
@@ -187,6 +189,8 @@ function AppInner() {
       {showTour && isLoggedIn && <TourGuide onFinish={finishTour} />}
       {isLoggedIn && showBottomNav && <FlowCircleWidget />}
       {isLoggedIn && <TrialExpiredModal />}
+      {isLoggedIn && <OfflineBanner />}
+      {isLoggedIn && <NotificationPrompt />}
       <ToastContainer />
       <KeyboardHint />
 

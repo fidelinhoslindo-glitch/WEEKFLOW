@@ -8,6 +8,9 @@ import {
 import { dbGetTasks, dbSaveTasks, dbGetProfile, dbSaveProfile, dbClaimTrial } from '../utils/firebaseDB'
 import { fbSubscribeToInvites } from '../utils/firebaseCircle'
 import { seedDemoData, DEMO_USER } from '../utils/demoData'
+import { registerServiceWorker, scheduleAllTodayReminders } from '../utils/notifications'
+import { enqueueWrite, flushQueue } from '../utils/offlineQueue'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 
 const AppContext = createContext(null)
 
@@ -112,6 +115,9 @@ function weekLabel(offset) {
 }
 
 export function AppProvider({ children }) {
+  // ── Online status + offline queue flush ───────────────────────────────────
+  const { isOnline, wasOffline } = useOnlineStatus()
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn] = useState(() => load(LS.AUTH, false))
   const [user, setUserState]        = useState(() => load(LS.USER, { name:'', email:'', plan:'Free', avatar:null, avatarColor:'#6467f2' }))
@@ -209,6 +215,8 @@ export function AppProvider({ children }) {
     await syncFromCloud(fbUser.uid)
     const doneOnboard = load('wf_onboard_done', false) || Object.keys(load(LS.ONBOARD, {})).length > 0
     setPage(doneOnboard ? 'dashboard' : 'onboarding')
+    // Register service worker so push/background notifications work
+    registerServiceWorker().catch(() => {})
   }
 
   const signIn = async (email, password) => {
@@ -319,14 +327,31 @@ export function AppProvider({ children }) {
     try { await dbSaveTasks(user.id, tasks) } catch {}
   }, [user?.id])
 
+  // Flush offline queue when coming back online
+  useEffect(() => {
+    if (isOnline && wasOffline && user?.id) {
+      flushQueue(user.id)
+    }
+  }, [isOnline, wasOffline, user?.id])
+
   // ── Tasks ─────────────────────────────────────────────────────────────────
   const [tasks, setTasksState] = useState(() => load(LS.TASKS, SEED))
+
+  // Schedule 15-min-before reminders for today's tasks whenever the task list changes
+  useEffect(() => {
+    if (!isLoggedIn) return
+    scheduleAllTodayReminders(tasks)
+  }, [tasks, isLoggedIn])
 
   const persistTasks = useCallback((updater) => {
     setTasksState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater
       save(LS.TASKS, next)
-      syncToCloud(next)
+      if (!navigator.onLine) {
+        enqueueWrite('save_tasks', next)
+      } else {
+        syncToCloud(next)
+      }
       return next
     })
   }, [syncToCloud])
