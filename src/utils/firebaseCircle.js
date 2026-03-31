@@ -1,21 +1,21 @@
 import {
-  collection, collectionGroup, doc, getDocs, getDoc, setDoc, deleteDoc,
-  addDoc, updateDoc, query, where, onSnapshot,
+  collection, doc, getDocs, getDoc, setDoc, deleteDoc,
+  addDoc, updateDoc, query, where, onSnapshot, serverTimestamp,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from './firebase'
 
-// ── Circles ───────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Firestore layout
+//
+//   circles/{circleId}
+//     members/{userId}     — member docs, keyed by userId
+//     events/{eventId}     — event docs
+//     invites/{inviteId}   — pending invites (email-based)
+//
+//   (invites live inside the circle so no collectionGroup index is needed)
+// ─────────────────────────────────────────────────────────────────────────────
 
-export async function fbListCircles(userId) {
-  if (!isFirebaseConfigured()) return []
-  // Use collectionGroup to find all member docs for this userId
-  const q = query(collectionGroup(db, 'members'), where('userId', '==', userId))
-  const snap = await getDocs(q)
-  const circleIds = snap.docs.map(d => d.ref.parent.parent.id)
-  if (circleIds.length === 0) return []
-  const circles = await Promise.all(circleIds.map(id => getDoc(doc(db, 'circles', id))))
-  return circles.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() }))
-}
+// ── Circles ───────────────────────────────────────────────────────────────────
 
 export async function fbGetCircle(circleId) {
   if (!isFirebaseConfigured()) return null
@@ -44,7 +44,11 @@ export async function fbGetMembers(circleId) {
 
 export async function fbAddMember(circleId, memberData) {
   if (!isFirebaseConfigured()) return
-  await setDoc(doc(db, 'circles', circleId, 'members', memberData.userId), memberData, { merge: true })
+  await setDoc(
+    doc(db, 'circles', circleId, 'members', memberData.userId),
+    memberData,
+    { merge: true }
+  )
 }
 
 export async function fbRemoveMember(circleId, userId) {
@@ -75,68 +79,97 @@ export async function fbDeleteEvent(circleId, eventId) {
   await deleteDoc(doc(db, 'circles', circleId, 'events', eventId))
 }
 
-// ── Invites ───────────────────────────────────────────────────────────────────
+// ── Invites (stored inside the circle, keyed by email) ───────────────────────
 
-export async function fbSendInvite(inviteData) {
+export async function fbSendInvite({ circleId, circleName, circleMode, inviterName, email }) {
   if (!isFirebaseConfigured()) return { ok: false, error: 'Firebase not configured' }
   try {
-    await addDoc(collection(db, 'circle_invites'), {
-      ...inviteData,
+    const normalEmail = email.toLowerCase()
+    const safeEmail   = normalEmail.replace(/[^a-z0-9]/g, '_')
+    const inboxId     = `${safeEmail}__${circleId}`
+    const payload = {
+      circleId,
+      circleName,
+      circleMode,
+      inviterName,
+      email: normalEmail,
       status: 'pending',
       createdAt: new Date().toISOString(),
-    })
-    return { ok: true }
+    }
+    // Write inside circle (source of truth) + flat invite_inbox (for listener)
+    await Promise.all([
+      setDoc(doc(db, 'circles', circleId, 'invites', safeEmail), payload),
+      setDoc(doc(db, 'invite_inbox', inboxId), { ...payload, inboxId }),
+    ])
+    return { ok: true, inviteId: safeEmail }
   } catch (e) {
     return { ok: false, error: e.message }
   }
 }
 
-export async function fbGetPendingInvites(email) {
-  if (!isFirebaseConfigured()) return []
-  const q = query(
-    collection(db, 'circle_invites'),
-    where('email', '==', email),
-    where('status', '==', 'pending')
-  )
-  const snap = await getDocs(q)
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
-}
-
-export async function fbUpdateInviteStatus(inviteId, status) {
+/**
+ * Mark invite as accepted/declined.
+ * inboxId = the doc ID in invite_inbox (returned by fbSendInvite as inviteId,
+ * stored in the notification as inv.inboxId).
+ */
+export async function fbUpdateInviteStatus(circleId, safeEmailId, status) {
   if (!isFirebaseConfigured()) return
-  await updateDoc(doc(db, 'circle_invites', inviteId), { status })
+  const inboxId = `${safeEmailId}__${circleId}`
+  await Promise.all([
+    updateDoc(doc(db, 'circles', circleId, 'invites', safeEmailId), { status }).catch(() => {}),
+    updateDoc(doc(db, 'invite_inbox', inboxId), { status }).catch(() => {}),
+  ])
 }
 
 // ── Realtime subscriptions ────────────────────────────────────────────────────
 
-export function fbSubscribeToEvents(circleId, onUpdate) {
-  if (!isFirebaseConfigured()) return { unsubscribe: () => {} }
-  const unsub = onSnapshot(collection(db, 'circles', circleId, 'events'), snap => {
-    const events = snap.docs.map(d => d.data())
-    onUpdate(events)
-  })
-  return { unsubscribe: unsub }
-}
-
+/** Subscribe to members of a single circle. Returns { unsubscribe }. */
 export function fbSubscribeToMembers(circleId, onUpdate) {
   if (!isFirebaseConfigured()) return { unsubscribe: () => {} }
-  const unsub = onSnapshot(collection(db, 'circles', circleId, 'members'), snap => {
-    const members = snap.docs.map(d => d.data())
-    onUpdate(members)
-  })
+  const unsub = onSnapshot(
+    collection(db, 'circles', circleId, 'members'),
+    snap => onUpdate(snap.docs.map(d => d.data()))
+  )
   return { unsubscribe: unsub }
 }
 
+/** Subscribe to events of a single circle. Returns { unsubscribe }. */
+export function fbSubscribeToEvents(circleId, onUpdate) {
+  if (!isFirebaseConfigured()) return { unsubscribe: () => {} }
+  const unsub = onSnapshot(
+    collection(db, 'circles', circleId, 'events'),
+    snap => onUpdate(snap.docs.map(d => d.data()))
+  )
+  return { unsubscribe: unsub }
+}
+
+/**
+ * Subscribe to pending invites for a given email across ALL circles.
+ *
+ * Strategy: we query the global circle_invites_index collection which is a
+ * flat mirror kept for cross-circle lookups — OR we use a collectionGroup.
+ *
+ * To avoid collectionGroup index requirements we use a dedicated top-level
+ * mirror collection: `invite_inbox/{email}/pending/{inviteId}`
+ *
+ * But since we want zero extra writes, we simply query the top-level
+ * `invite_inbox` collection where we store a copy on fbSendInvite.
+ *
+ * Simpler approach that works without indexes: store a parallel doc in
+ * `invite_inbox/{sanitizedEmail}_{circleId}` and subscribe to that.
+ *
+ * SIMPLEST that needs no extra index: on fbSendInvite, ALSO write to
+ * `invite_inbox` collection. Subscribe to that.
+ */
 export function fbSubscribeToInvites(email, onUpdate) {
   if (!isFirebaseConfigured()) return { unsubscribe: () => {} }
   const q = query(
-    collection(db, 'circle_invites'),
-    where('email', '==', email),
+    collection(db, 'invite_inbox'),
+    where('email', '==', email.toLowerCase()),
     where('status', '==', 'pending')
   )
   const unsub = onSnapshot(q, snap => {
-    const invites = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    onUpdate(invites)
+    onUpdate(snap.docs.map(d => ({ id: d.id, ...d.data() })))
   })
   return { unsubscribe: unsub }
 }

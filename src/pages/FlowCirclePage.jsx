@@ -5,11 +5,11 @@ import Header from '../components/Header'
 import { CIRCLE_MODES, loadCircles, saveCircles, generateCircleInviteLink } from '../utils/flowCircle'
 import { isFirebaseConfigured } from '../utils/firebase'
 import {
-  fbListCircles, fbUpsertCircle, fbDeleteCircle,
+  fbUpsertCircle, fbDeleteCircle,
   fbGetCircle, fbGetMembers, fbAddMember,
   fbGetEvents, fbAddEvent, fbDeleteEvent,
   fbSendInvite, fbUpdateInviteStatus,
-  fbSubscribeToEvents,
+  fbSubscribeToMembers, fbSubscribeToEvents,
 } from '../utils/firebaseCircle'
 import CollisionDetector from '../components/flowcircle/CollisionDetector'
 import CirclePulse from '../components/flowcircle/CirclePulse'
@@ -194,32 +194,22 @@ export default function FlowCirclePage() {
   const mode   = circle?CIRCLE_MODES[circle.mode]:null
   const persist = useCallback((u)=>{setCircles(u);saveCircles(u)},[])
 
-  // Trigger to force a re-sync after joining a circle
-  const [syncTrigger, setSyncTrigger] = useState(0)
-
-  // ── Sync from Firebase ──
+  // ── Realtime subscriptions for the active circle ──
   useEffect(()=>{
-    if(!isFirebaseConfigured()||!userId)return
-    setSyncing(true)
-    fbListCircles(userId).then(async(rawCircles)=>{
-      const allCircles = await Promise.all((rawCircles||[]).map(async c=>{
-        const [members, events] = await Promise.all([
-          fbGetMembers(c.id).catch(()=>[]),
-          fbGetEvents(c.id).catch(()=>[])
-        ])
-        return {...c,members,events}
-      }))
-      if(allCircles.length>0){
-        const demos = loadCircles().filter(c=>c.id.startsWith('circle_demo_'))
-        persist([...demos,...allCircles])
-        setActiveId(prev => {
-          const ids = allCircles.map(c=>c.id)
-          if(prev && ids.includes(prev)) return prev
-          return allCircles[0]?.id || prev
-        })
-      }
-    }).catch(()=>{}).finally(()=>setSyncing(false))
-  },[userId,syncTrigger])
+    if(!isFirebaseConfigured()||!activeId)return
+    // Subscribe members
+    const unsubMembers = fbSubscribeToMembers(activeId, (members)=>{
+      setCircles(prev=>prev.map(c=>c.id===activeId?{...c,members}:c))
+      saveCircles(circles.map(c=>c.id===activeId?{...c,members}:c))
+    })
+    // Subscribe events
+    const unsubEvents = fbSubscribeToEvents(activeId, (events)=>{
+      setCircles(prev=>prev.map(c=>c.id===activeId?{...c,events}:c))
+      saveCircles(circles.map(c=>c.id===activeId?{...c,events}:c))
+    })
+    setSyncing(false)
+    return ()=>{ unsubMembers.unsubscribe(); unsubEvents.unsubscribe() }
+  },[activeId]) // eslint-disable-line
 
   // Invite check moved to AppContext (global — works on any page)
 
@@ -229,6 +219,7 @@ export default function FlowCirclePage() {
     if(existing){
       setActiveId(existing.id)
       pushToast('You are already in this circle!','info')
+      setPendingCircleInvite(null)
       return
     }
     if(isFirebaseConfigured()&&userId){
@@ -238,40 +229,28 @@ export default function FlowCirclePage() {
         avatar:user?.avatarColor||'#6467f2', status:'online',
         email:user?.email||'', joinedAt:new Date().toISOString()
       }).catch(e=>{ console.warn('fbAddMember failed:', e.message) })
-      // Mark matching invite as accepted
-      if(invite.inviteId){
-        await fbUpdateInviteStatus(invite.inviteId, 'accepted').catch(()=>{})
+      // Mark invite as accepted (circleId + safeEmailId needed)
+      if(invite.inviteId && invite.circleId){
+        await fbUpdateInviteStatus(invite.circleId, invite.inviteId, 'accepted').catch(()=>{})
       }
     }
-    // Fetch fresh circle data from Firestore (use direct ID lookup to avoid race condition)
-    let members = []
-    let events = []
+    // Fetch circle metadata directly by ID (no collectionGroup)
     let circleData = null
     if(isFirebaseConfigured()){
-      try {
-        const [mData, eData, cData] = await Promise.all([
-          fbGetMembers(invite.circleId),
-          fbGetEvents(invite.circleId),
-          fbGetCircle(invite.circleId).catch(()=>null)
-        ])
-        members = mData || []
-        events = eData || []
-        circleData = cData || null
-      } catch {}
+      circleData = await fbGetCircle(invite.circleId).catch(()=>null)
     }
     const nc={
       id:invite.circleId,
       mode:circleData?.mode||invite.mode||'friends',
       name:circleData?.name||invite.circleName,
       color:circleData?.color||'#6467f2',
-      members,
-      events,
+      members:[],
+      events:[],
       createdAt:circleData?.createdAt||new Date().toISOString()
     }
-    persist(circles.find(c=>c.id===nc.id) ? circles : [...circles, nc])
+    // Add to local state — realtime subscriptions will fill members/events automatically
+    persist([...circles, nc])
     setActiveId(nc.id)
-    // Delay sync to give Firestore time to propagate the new member doc
-    setTimeout(()=>setSyncTrigger(t=>t+1), 2000)
     pushToast(`🎉 You joined "${nc.name}"!`,'success')
     setPendingCircleInvite(null)
   }

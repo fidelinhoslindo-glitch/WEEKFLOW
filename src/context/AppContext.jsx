@@ -592,13 +592,17 @@ export function AppProvider({ children }) {
           setNotifications(prev => {
             if (prev.some(n => n.inviteId === inv.id)) return prev
             // Normalize fields so Header.jsx openInviteModal + joinCircle work correctly
+            // inv.id = inboxId (e.g. "user_email__circleId")
+            // safeEmailId = email part before __ separator (used by fbUpdateInviteStatus)
+            const safeEmailId = inv.id?.split('__')[0] || inv.id
             const circleInvite = {
-              id:          inv.id,
-              circle_id:   inv.circleId,
-              circle_name: inv.circleName,
-              circle_mode: inv.circleMode,
-              inviter_name:inv.inviterName,
-              email:       inv.email,
+              id:           inv.id,
+              circle_id:    inv.circleId,
+              circle_name:  inv.circleName,
+              circle_mode:  inv.circleMode,
+              inviter_name: inv.inviterName,
+              email:        inv.email,
+              safeEmailId,              // needed to call fbUpdateInviteStatus
             }
             return [{ id: Date.now() + Math.random(), text: `📩 ${inv.inviterName} invited you to "${inv.circleName}"`, time: 'just now', read: false, inviteId: inv.id, circleInvite }, ...prev.slice(0, 9)]
           })

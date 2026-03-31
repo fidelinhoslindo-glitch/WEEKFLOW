@@ -32,12 +32,14 @@ function Header({ title, subtitle }) {
 
   const acceptInvite = () => {
     if (!inviteModal) return
-    // Normalize fields so joinCircle in FlowCirclePage can use them
+    const inv = inviteModal.invite
+    // Pass safeEmailId as inviteId so joinCircle can call fbUpdateInviteStatus correctly
     setPendingCircleInvite({
-      ...inviteModal.invite,
-      circleId: inviteModal.invite.circle_id,
-      circleName: inviteModal.invite.circle_name,
-      mode: inviteModal.circleMode || 'friends',
+      ...inv,
+      circleId:   inv.circle_id,
+      circleName: inv.circle_name,
+      mode:       inviteModal.circleMode || 'friends',
+      inviteId:   inv.safeEmailId || inv.id,
     })
     navigate('flowcircle')
     setNotifications(prev => prev.filter(x => x.id !== inviteModal.notifId))
@@ -47,7 +49,9 @@ function Header({ title, subtitle }) {
   const declineInvite = async () => {
     if (!inviteModal) return
     try {
-      await fbUpdateInviteStatus(inviteModal.invite.id, 'declined')
+      const inv = inviteModal.invite
+      const safeEmailId = inv.safeEmailId || inv.id
+      await fbUpdateInviteStatus(inv.circle_id, safeEmailId, 'declined')
     } catch {}
     setNotifications(prev => prev.filter(x => x.id !== inviteModal.notifId))
     setInviteModal(null)
