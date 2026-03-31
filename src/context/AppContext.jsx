@@ -125,6 +125,8 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const unsub = fbOnAuthStateChanged(async (fbUser) => {
       if (!fbUser) return
+      // Block unverified email/password accounts
+      if (!fbUser.emailVerified && fbUser.providerData[0]?.providerId === 'password') return
       // Already logged in via listener — sync user state
       const existing = load(LS.USER, null)
       if (existing?.id === fbUser.uid) return
@@ -179,9 +181,10 @@ export function AppProvider({ children }) {
     await _finishLogin(fbUser)
   }
 
-  const signUp = async (name, email, password) => {
-    const fbUser = await fbSignUp(email, password)
-    await _finishLogin(fbUser, name)
+  const signUp = async (_name, email, password) => {
+    await fbSignUp(email, password)
+    // Do NOT log in — user must verify email first
+    await fbSignOut()
   }
 
   const signInWithGoogle = async () => {
