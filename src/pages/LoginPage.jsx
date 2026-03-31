@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import { useLanguage } from '../context/LanguageContext'
-import { supabaseResetPassword, supabaseResendVerification } from '../utils/supabase'
+import { fbSendPasswordReset } from '../utils/firebaseAuth'
+import { isFirebaseConfigured } from '../utils/firebase'
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-const sbReady = !!(SUPABASE_URL && SUPABASE_KEY)
+const fbReady = isFirebaseConfigured()
 
 const getInitialPage = () => {
   try {
@@ -15,10 +14,9 @@ const getInitialPage = () => {
 }
 
 export default function LoginPage() {
-  const { signIn, signUp, signInWithGoogle, signInWithApple, login, navigate } = useApp()
+  const { signIn, signUp, signInWithGoogle, signInWithApple, navigate } = useApp()
   const { t } = useLanguage()
 
-  // Main form state
   const [tab,      setTab]      = useState('signin')
   const [name,     setName]     = useState('')
   const [email,    setEmail]    = useState('')
@@ -28,60 +26,24 @@ export default function LoginPage() {
   const [oauthLoading, setOauthLoading] = useState('')
   const [error,    setError]    = useState('')
 
-  // Email verification modal
-  const [showVerifyModal, setShowVerifyModal] = useState(false)
-  const [verifyEmail,     setVerifyEmail]     = useState('')
-  const [resending,       setResending]       = useState(false)
-  const [resendSuccess,   setResendSuccess]   = useState(false)
-
-  // Forgot password / reset view: 'form' | 'forgot' | 'reset'
+  // Forgot password / reset view: 'form' | 'forgot'
   const [view,          setView]          = useState('form')
   const [forgotEmail,   setForgotEmail]   = useState('')
   const [forgotLoading, setForgotLoading] = useState(false)
   const [forgotMsg,     setForgotMsg]     = useState('')
-  const [resetToken,    setResetToken]    = useState('')
-  const [newPassword,   setNewPassword]   = useState('')
-  const [confirmPass,   setConfirmPass]   = useState('')
-  const [resetLoading,  setResetLoading]  = useState(false)
-  const [resetMsg,      setResetMsg]      = useState('')
 
-  // ── Handle OAuth redirect + password reset token in URL hash ──────────────
+  // Firebase sends a reset email with a link — no in-app reset token flow needed
+  // If user clicks the link they land on Firebase's hosted reset page
+
+  // ── Handle Google redirect result (if redirect flow was used) ─────────────
   useEffect(() => {
-    const hash = window.location.hash
-    if (!hash) return
-
-    const params = new URLSearchParams(hash.replace('#', ''))
-    const accessToken = params.get('access_token')
-    const type = params.get('type')
-
-    if (!accessToken) return
-    window.history.replaceState({}, '', window.location.pathname)
-
-    if (type === 'recovery') {
-      setResetToken(accessToken)
-      setView('reset')
-      return
-    }
-
-    localStorage.setItem('wf_token', JSON.stringify(accessToken))
-    const refreshToken = params.get('refresh_token')
-    if (refreshToken) localStorage.setItem('wf_refresh_token', JSON.stringify(refreshToken))
-    fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${accessToken}` }
-    })
-      .then(r => r.json())
-      .then(u => {
-        const userName  = u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split('@')[0] || 'User'
-        login(userName, u.email || '', null)
-        navigate(getInitialPage())
-      })
-      .catch(() => { setError('Login link expired or invalid.') })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // fbGetRedirectResult is already handled in AppContext on mount
+    // Nothing needed here
   }, [])
 
-  const clearMessages = () => { setError('') }
+  const clearMessages = () => setError('')
 
-  // ── Email/password submit ──────────────────────────────────────────────────
+  // ── Email/password submit ─────────────────────────────────────────────────
   const handleSubmit = async () => {
     clearMessages()
     if (!email.trim())    { setError('Please enter your email.'); return }
@@ -90,32 +52,14 @@ export default function LoginPage() {
       if (!name.trim())        { setError('Please enter your full name.'); return }
       if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
     }
-
     setLoading(true)
     try {
       if (tab === 'signin') {
-        if (sbReady) {
-          await signIn(email.trim(), password)
-        } else {
-          await new Promise(r => setTimeout(r, 500))
-          login(email.split('@')[0], email, null)
-        }
-        navigate(getInitialPage())
+        await signIn(email.trim(), password)
       } else {
-        if (sbReady) {
-          const res = await signUp(name.trim(), email.trim(), password)
-          if (res?.needsConfirmation) {
-            setVerifyEmail(email.trim())
-            setShowVerifyModal(true)
-          } else {
-            navigate(getInitialPage())
-          }
-        } else {
-          await new Promise(r => setTimeout(r, 500))
-          login(name.trim(), email.trim(), null)
-          navigate(getInitialPage())
-        }
+        await signUp(name.trim(), email.trim(), password)
       }
+      navigate(getInitialPage())
     } catch (err) {
       setError(err.message || t.common.unexpectedError)
     }
@@ -125,30 +69,25 @@ export default function LoginPage() {
   // ── Google OAuth ──────────────────────────────────────────────────────────
   const handleGoogle = async () => {
     clearMessages()
-    if (!sbReady) { setError('Connect Supabase first — Settings → Cloud Sync.'); return }
+    if (!fbReady) { setError('Firebase not configured.'); return }
     setOauthLoading('google')
-    try { await signInWithGoogle() }
-    catch (err) { setError(err.message || 'Google login failed.'); setOauthLoading('') }
+    try {
+      await signInWithGoogle()
+      // popup: AppContext._finishLogin handles navigation
+      // redirect: fbGetRedirectResult handles it on next mount
+    } catch (err) {
+      setError(err.message || 'Google login failed.')
+    }
+    setOauthLoading('')
   }
 
   // ── Apple OAuth ───────────────────────────────────────────────────────────
   const handleApple = async () => {
     clearMessages()
-    if (!sbReady) { setError('Connect Supabase first — Settings → Cloud Sync.'); return }
     setOauthLoading('apple')
     try { await signInWithApple() }
-    catch (err) { setError(err.message || 'Apple login failed.'); setOauthLoading('') }
-  }
-
-  // ── Resend verification email ─────────────────────────────────────────────
-  const handleResend = async () => {
-    setResending(true)
-    setResendSuccess(false)
-    try {
-      await supabaseResendVerification(verifyEmail)
-      setResendSuccess(true)
-    } catch { /* silent */ }
-    setResending(false)
+    catch (err) { setError(err.message || 'Apple login failed.') }
+    setOauthLoading('')
   }
 
   // ── Forgot password ───────────────────────────────────────────────────────
@@ -157,7 +96,7 @@ export default function LoginPage() {
     setForgotLoading(true)
     setForgotMsg('')
     try {
-      await supabaseResetPassword(forgotEmail.trim())
+      await fbSendPasswordReset(forgotEmail.trim())
       setForgotMsg(t.login.resetEmailSent)
     } catch (err) {
       setForgotMsg(err.message || t.common.unexpectedError)
@@ -165,60 +104,7 @@ export default function LoginPage() {
     setForgotLoading(false)
   }
 
-  // ── Reset password ────────────────────────────────────────────────────────
-  const handleReset = async () => {
-    if (newPassword !== confirmPass) { setResetMsg(t.login.passwordsMismatch); return }
-    setResetLoading(true)
-    setResetMsg('')
-    try {
-      const { supabaseUpdatePassword } = await import('../utils/supabase')
-      await supabaseUpdatePassword(resetToken, newPassword)
-      setResetMsg(t.login.passwordUpdated)
-      setTimeout(() => { setView('form'); setResetToken('') }, 2000)
-    } catch (err) {
-      setResetMsg(err.message || t.common.unexpectedError)
-    }
-    setResetLoading(false)
-  }
-
   const tabs = [['signin', t.login.signIn], ['signup', t.login.signUp]]
-
-  // ── VERIFY EMAIL MODAL ────────────────────────────────────────────────────
-  if (showVerifyModal) {
-    return (
-      <div className="min-h-screen bg-[#07090f] flex items-center justify-center p-4">
-        <div className="fixed inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-[#6467f2] opacity-10 blur-[120px]"/>
-          <div className="absolute -bottom-32 -right-32 w-[400px] h-[400px] rounded-full bg-[#8b5cf6] opacity-10 blur-[100px]"/>
-        </div>
-        <div className="relative w-full max-w-sm text-center">
-          <div className="bg-[#0d0f1c] border border-white/[0.07] rounded-2xl p-8 shadow-2xl space-y-6">
-            <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto">
-              <span className="material-symbols-outlined text-emerald-400 text-3xl">mark_email_unread</span>
-            </div>
-            <div>
-              <h2 className="text-white text-xl font-black mb-2">{t.login.verifyTitle}</h2>
-              <p className="text-slate-400 text-sm">{t.login.verifySent}</p>
-              <p className="text-[#6467f2] font-bold mt-1 break-all">{verifyEmail}</p>
-            </div>
-            {resendSuccess ? (
-              <p className="text-emerald-400 text-sm font-semibold">{t.login.resendSuccess}</p>
-            ) : (
-              <button onClick={handleResend} disabled={resending}
-                className="text-slate-400 hover:text-white text-sm transition-colors disabled:opacity-50">
-                {resending ? t.login.resending : t.login.resendEmail}
-              </button>
-            )}
-            <button
-              onClick={() => { setShowVerifyModal(false); setTab('signin') }}
-              className="w-full py-3 bg-gradient-to-r from-[#6467f2] to-[#8b5cf6] text-white font-bold rounded-xl text-sm hover:opacity-90 transition-all shadow-lg shadow-[#6467f2]/30">
-              {t.login.goToSignIn}
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // ── FORGOT PASSWORD VIEW ──────────────────────────────────────────────────
   if (view === 'forgot') {
@@ -262,55 +148,6 @@ export default function LoginPage() {
             </button>
             <button onClick={() => setView('form')} className="w-full text-sm text-slate-500 hover:text-slate-300 transition-colors py-1">
               ← {t.login.backToLogin}
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ── RESET PASSWORD VIEW ───────────────────────────────────────────────────
-  if (view === 'reset') {
-    return (
-      <div className="min-h-screen bg-[#07090f] flex items-center justify-center p-4">
-        <div className="fixed inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-[#6467f2] opacity-10 blur-[120px]"/>
-        </div>
-        <div className="relative w-full max-w-sm">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#6467f2] to-[#8b5cf6] flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-[#6467f2]/40">
-              <span className="text-white font-black text-2xl">W</span>
-            </div>
-            <h1 className="text-white text-2xl font-black tracking-tight">{t.login.resetTitle}</h1>
-          </div>
-          <div className="bg-[#0d0f1c] border border-white/[0.07] rounded-2xl p-6 shadow-2xl space-y-4">
-            {resetMsg && (
-              <div className={`flex items-start gap-2.5 rounded-xl px-4 py-3 ${resetMsg === t.login.passwordUpdated ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
-                <span className={`material-symbols-outlined text-sm mt-0.5 shrink-0 ${resetMsg === t.login.passwordUpdated ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {resetMsg === t.login.passwordUpdated ? 'check_circle' : 'error'}
-                </span>
-                <p className={`text-sm ${resetMsg === t.login.passwordUpdated ? 'text-emerald-300' : 'text-red-300'}`}>{resetMsg}</p>
-              </div>
-            )}
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">{t.login.newPassword}</label>
-              <input type="password" placeholder={t.login.passwordPlaceholder}
-                value={newPassword} onChange={e => setNewPassword(e.target.value)}
-                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#6467f2] transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">{t.login.confirmPassword}</label>
-              <input type="password" placeholder={t.login.passwordPlaceholder}
-                value={confirmPass} onChange={e => setConfirmPass(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleReset()}
-                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#6467f2] transition-colors"
-              />
-            </div>
-            <button onClick={handleReset} disabled={resetLoading || !newPassword || !confirmPass}
-              className="w-full py-3 bg-gradient-to-r from-[#6467f2] to-[#8b5cf6] text-white font-bold rounded-xl text-sm hover:opacity-90 transition-all shadow-lg shadow-[#6467f2]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-              {resetLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : null}
-              {t.login.updatePassword}
             </button>
           </div>
         </div>
@@ -458,11 +295,11 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Supabase status */}
+          {/* Firebase status */}
           <div className="flex items-center justify-center gap-1.5 mt-5">
-            <div className={`w-1.5 h-1.5 rounded-full ${sbReady ? 'bg-emerald-500' : 'bg-slate-600'}`}/>
+            <div className={`w-1.5 h-1.5 rounded-full ${fbReady ? 'bg-emerald-500' : 'bg-slate-600'}`}/>
             <p className="text-xs text-slate-600">
-              {sbReady ? t.login.connectedSupabase : t.login.offlineMode}
+              {fbReady ? 'Connected to Firebase' : t.login.offlineMode}
             </p>
           </div>
         </div>

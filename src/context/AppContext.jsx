@@ -1,7 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { SUPABASE_ENABLED, sb, supabaseSignIn, supabaseSignUp, supabaseSignOut, supabaseRefreshToken } from '../utils/supabase'
 import { TOAST_TIMEOUT, FREE_TASK_LIMIT, VALID_PAGES } from '../utils/constants'
-import { ensureFirebaseAuth } from '../utils/firebase'
+import { isFirebaseConfigured } from '../utils/firebase'
+import {
+  fbSignIn, fbSignUp, fbSignOut, fbSignInWithGoogle,
+  fbGetRedirectResult, fbOnAuthStateChanged,
+} from '../utils/firebaseAuth'
+import { dbGetTasks, dbSaveTasks, dbGetProfile } from '../utils/firebaseDB'
 import { fbSubscribeToInvites } from '../utils/firebaseCircle'
 
 const AppContext = createContext(null)
@@ -109,21 +113,6 @@ function weekLabel(offset) {
 export function AppProvider({ children }) {
   // ── Auth ──────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn] = useState(() => load(LS.AUTH, false))
-  const [sbToken,    setSbToken]    = useState(() => {
-    // On init: if token is expired or is a service/anon key, clear it
-    const t = load(LS.TOKEN, null)
-    if (!t) return null
-    try {
-      const payload = JSON.parse(atob(t.split('.')[1]))
-      if (Date.now() > payload.exp * 1000) return null
-      // Reject service_role and anon keys — only accept user JWTs
-      if (payload.role === 'service_role' || payload.role === 'anon') {
-        localStorage.removeItem(LS.TOKEN)
-        return null
-      }
-    } catch {}
-    return t
-  })
   const [user, setUserState]        = useState(() => load(LS.USER, { name:'', email:'', plan:'Free', avatar:null, avatarColor:'#6467f2' }))
   const [syncing, setSyncing]       = useState(false)
 
@@ -131,152 +120,122 @@ export function AppProvider({ children }) {
     setUserState(prev => { const next = typeof updater === 'function' ? updater(prev) : updater; save(LS.USER, next); return next })
   }, [])
 
-  const login = async (name, email, password) => {
-    // password=null means OAuth already handled (token already in localStorage)
-    if (password === null) {
-      const existingToken = load(LS.TOKEN, null)
-      const tokenId = (() => { try { return JSON.parse(atob((existingToken||'').split('.')[1])).sub||null } catch { return null } })()
-      const u = { name: name || email?.split('@')[0] || 'User', email: email || '', plan:'Free', avatar:null, avatarColor:'#6467f2', id: tokenId }
+  // ── Firebase auth state listener — source of truth ───────────────────────
+  useEffect(() => {
+    const unsub = fbOnAuthStateChanged(async (fbUser) => {
+      if (!fbUser) return
+      // Already logged in via listener — sync user state
+      const existing = load(LS.USER, null)
+      if (existing?.id === fbUser.uid) return
+      const u = {
+        id: fbUser.uid,
+        email: fbUser.email || '',
+        name: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+        plan: 'Free',
+        avatar: fbUser.photoURL || null,
+        avatarColor: existing?.avatarColor || '#6467f2',
+      }
       save(LS.USER, u); setUserState(u)
       save(LS.AUTH, true); setIsLoggedIn(true)
-      if (existingToken) { setSbToken(existingToken); syncFromCloud(existingToken) }
-      return { ok: true }
+      await syncFromCloud(fbUser.uid)
+    })
+    // Handle Google redirect result on mount
+    fbGetRedirectResult().then(fbUser => {
+      if (fbUser) _finishLogin(fbUser)
+    })
+    return unsub
+  }, []) // eslint-disable-line
+
+  const _finishLogin = async (fbUser, displayName) => {
+    localStorage.removeItem(LS.TASKS); localStorage.removeItem(LS.ONBOARD)
+    localStorage.removeItem(LS.WEEK); localStorage.removeItem('wf_notes')
+    setTasksState([]); setOnboardingDataState({})
+    const u = {
+      id: fbUser.uid,
+      email: fbUser.email || '',
+      name: displayName || fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+      plan: 'Free',
+      avatar: fbUser.photoURL || null,
+      avatarColor: '#6467f2',
     }
-    // Try Supabase with email+password
-    if (SUPABASE_ENABLED && password) {
-      try {
-        const res = await supabaseSignIn(email, password)
-        // Clear previous user data before loading new user's data
-        localStorage.removeItem(LS.TASKS); localStorage.removeItem(LS.ONBOARD); localStorage.removeItem(LS.WEEK); localStorage.removeItem('wf_notes'); localStorage.removeItem('wf_completion_history')
-        setTasksState([]); setOnboardingDataState({})
-        const token = res.access_token
-        save(LS.TOKEN, token); setSbToken(token)
-        if (res.refresh_token) localStorage.setItem('wf_refresh_token', JSON.stringify(res.refresh_token))
-        const u = { name: res.user?.user_metadata?.name || name || email.split('@')[0], email, plan:'Free', avatar:null, avatarColor:'#6467f2', id: res.user?.id }
-        save(LS.USER, u); setUserState(u)
-        save(LS.AUTH, true); setIsLoggedIn(true)
-        ensureFirebaseAuth()
-        syncFromCloud(token)
-        const doneOnboard = load('wf_onboard_done', false) || (load(LS.ONBOARD,{}) && Object.keys(load(LS.ONBOARD,{})).length > 0)
-        setPage(doneOnboard ? 'dashboard' : 'onboarding')
-        return { ok: true }
-      } catch (err) {
-        return { ok: false, error: err.message }
-      }
-    }
-    // Fallback: local-only (demo mode)
-    const u = { name: name || 'Demo User', email: email || 'demo@weekflow.app', plan:'Pro', avatar:null, avatarColor:'#6467f2' }
+    // Merge saved avatar color if exists
+    const prev = load(LS.USER, null)
+    if (prev?.avatarColor) u.avatarColor = prev.avatarColor
     save(LS.USER, u); setUserState(u)
     save(LS.AUTH, true); setIsLoggedIn(true)
-    return { ok: true }
+    await syncFromCloud(fbUser.uid)
+    const doneOnboard = load('wf_onboard_done', false) || Object.keys(load(LS.ONBOARD, {})).length > 0
+    setPage(doneOnboard ? 'dashboard' : 'onboarding')
   }
 
-  const register = async (name, email, password) => {
-    // Clean previous data so new account starts fresh
-    localStorage.removeItem(LS.TASKS)
-    localStorage.removeItem(LS.ONBOARD)
-    localStorage.removeItem(LS.WEEK)
-    setTasksState([])
-    setOnboardingDataState({})
-
-    if (SUPABASE_ENABLED && password) {
-      try {
-        const res = await supabaseSignUp(email, password, name)
-        if (res?.session?.access_token) {
-          const token = res.session.access_token
-          save(LS.TOKEN, token); setSbToken(token)
-          const u = { name, email, plan:'Free', avatar:null, avatarColor:'#6467f2', id: res.user?.id }
-          save(LS.USER, u); setUserState(u)
-          save(LS.AUTH, true); setIsLoggedIn(true)
-          return { ok: true }
-        }
-        const u = { name, email, plan:'Free', avatar:null, avatarColor:'#6467f2' }
-        save(LS.USER, u); setUserState(u)
-        save(LS.AUTH, true); setIsLoggedIn(true)
-        return { ok: true, needsConfirmation: true }
-      } catch (err) { return { ok: false, error: err.message } }
-    }
-    return login(name, email)
-  }
-
-  const logout = async () => {
-    if (sbToken) try { await supabaseSignOut(sbToken) } catch {}
-    // Clear all user-specific data so next login starts clean
-    localStorage.removeItem(LS.TASKS)
-    localStorage.removeItem(LS.ONBOARD)
-    localStorage.removeItem(LS.WEEK)
-    localStorage.removeItem(LS.USER)
-    localStorage.removeItem('wf_notes')
-    localStorage.removeItem('wf_completion_history')
-    setTasksState([])
-    setOnboardingDataState({})
-    setUserState({ name:'', email:'', plan:'Free', avatar:null, avatarColor:'#6467f2' })
-    save(LS.AUTH, false); localStorage.removeItem(LS.TOKEN); localStorage.removeItem('wf_refresh_token')
-    setIsLoggedIn(false); setSbToken(null); setPage('landing')
-  }
-
-  // ── Auth aliases used by LoginPage ────────────────────────────────────────
   const signIn = async (email, password) => {
-    const res = await login(null, email, password)
-    if (res && res.ok === false) throw new Error(res.error || 'Sign in failed')
-    return res
+    const fbUser = await fbSignIn(email, password)
+    await _finishLogin(fbUser)
   }
 
   const signUp = async (name, email, password) => {
-    const res = await register(name, email, password)
-    if (res && res.ok === false) throw new Error(res.error || 'Sign up failed')
-    return res
+    const fbUser = await fbSignUp(email, password)
+    await _finishLogin(fbUser, name)
   }
 
-  // Google OAuth via Supabase
-  // In Electron: opens default browser (so OAuth popup doesn't freeze)
-  // In browser: redirects normally
   const signInWithGoogle = async () => {
-    const SB_URL = import.meta.env.VITE_SUPABASE_URL || ''
-    if (!SB_URL) throw new Error('Supabase not configured')
-    // Redirect back to app after Google login
-    const redirectTo = window.location.origin + window.location.pathname
-    const authUrl = `${SB_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`
-
-    // Detect Electron desktop app — open OAuth in system browser
-    if (window.electron?.openExternal) {
-      window.electron.openExternal(authUrl)
-    } else {
-      window.location.href = authUrl
-    }
+    const fbUser = await fbSignInWithGoogle()
+    if (fbUser) await _finishLogin(fbUser)
+    // if null → redirect flow, fbGetRedirectResult handles it on next mount
   }
 
-  // Apple OAuth via Supabase
+  // Apple not supported by Firebase without extra setup — keep stub
   const signInWithApple = async () => {
-    const SB_URL = import.meta.env.VITE_SUPABASE_URL || ''
-    if (!SB_URL) throw new Error('Supabase not configured')
-    const redirectTo = window.location.origin + window.location.pathname
-    const authUrl = `${SB_URL}/auth/v1/authorize?provider=apple&redirect_to=${encodeURIComponent(redirectTo)}`
-    if (window.electron?.openExternal) {
-      window.electron.openExternal(authUrl)
-    } else {
-      window.location.href = authUrl
-    }
+    throw new Error('Apple Sign-In not configured yet')
   }
 
-  const deleteAccount = () => { localStorage.clear(); setIsLoggedIn(false); setTasksState([]); setUserState({ name:'', email:'', plan:'Free', avatar:null, avatarColor:'#6467f2' }); setPage('landing') }
+  // Keep login/register aliases for any internal callers
+  const login    = signIn
+  const register = signUp
 
-  // ── Cloud sync ────────────────────────────────────────────────────────────
-  const syncFromCloud = useCallback(async (token) => {
-    if (!SUPABASE_ENABLED || !token) return
+  const logout = async () => {
+    await fbSignOut().catch(() => {})
+    localStorage.removeItem(LS.TASKS); localStorage.removeItem(LS.ONBOARD)
+    localStorage.removeItem(LS.WEEK);  localStorage.removeItem(LS.USER)
+    localStorage.removeItem('wf_notes'); localStorage.removeItem('wf_completion_history')
+    setTasksState([]); setOnboardingDataState({})
+    setUserState({ name:'', email:'', plan:'Free', avatar:null, avatarColor:'#6467f2' })
+    save(LS.AUTH, false); setIsLoggedIn(false); setPage('landing')
+  }
+
+  const deleteAccount = () => {
+    fbSignOut().catch(() => {})
+    localStorage.clear()
+    setIsLoggedIn(false); setTasksState([])
+    setUserState({ name:'', email:'', plan:'Free', avatar:null, avatarColor:'#6467f2' })
+    setPage('landing')
+  }
+
+  // ── Cloud sync (Firestore) ────────────────────────────────────────────────
+  const syncFromCloud = useCallback(async (uid) => {
+    if (!isFirebaseConfigured() || !uid) return
     setSyncing(true)
     try {
-      const cloudTasks = await sb.tasks.list(token)
+      const [cloudTasks, profile] = await Promise.all([
+        dbGetTasks(uid),
+        dbGetProfile(uid),
+      ])
       if (cloudTasks?.length > 0) { setTasksState(cloudTasks); save(LS.TASKS, cloudTasks) }
+      if (profile) {
+        setUserState(prev => {
+          const merged = { ...prev, ...profile }
+          save(LS.USER, merged)
+          return merged
+        })
+      }
     } catch {}
     setSyncing(false)
   }, [])
 
   const syncToCloud = useCallback(async (tasks) => {
-    if (!SUPABASE_ENABLED || !sbToken || !user.id) return
-    const withUser = tasks.map(t => ({ ...t, user_id: user.id }))
-    try { await sb.tasks.upsert(sbToken, withUser) } catch {}
-  }, [sbToken, user.id])
+    if (!isFirebaseConfigured() || !user?.id) return
+    try { await dbSaveTasks(user.id, tasks) } catch {}
+  }, [user?.id])
 
   // ── Tasks ─────────────────────────────────────────────────────────────────
   const [tasks, setTasksState] = useState(() => load(LS.TASKS, SEED))
@@ -583,35 +542,29 @@ export function AppProvider({ children }) {
 
   // ── Check for pending circle invites (global — Firebase realtime) ───────────
   useEffect(() => {
-    if (!user?.email) return
-    // Ensure Firebase anonymous auth is active before subscribing
-    ensureFirebaseAuth().then(() => {
-      const sub = fbSubscribeToInvites(user.email, (invites) => {
-        if (!invites?.length) return
-        invites.forEach(inv => {
-          setNotifications(prev => {
-            if (prev.some(n => n.inviteId === inv.id)) return prev
-            // Normalize fields so Header.jsx openInviteModal + joinCircle work correctly
-            // inv.id = inboxId (e.g. "user_email__circleId")
-            // safeEmailId = email part before __ separator (used by fbUpdateInviteStatus)
-            const safeEmailId = inv.id?.split('__')[0] || inv.id
-            const circleInvite = {
-              id:           inv.id,
-              circle_id:    inv.circleId,
-              circle_name:  inv.circleName,
-              circle_mode:  inv.circleMode,
-              inviter_name: inv.inviterName,
-              email:        inv.email,
-              safeEmailId,              // needed to call fbUpdateInviteStatus
-            }
-            return [{ id: Date.now() + Math.random(), text: `📩 ${inv.inviterName} invited you to "${inv.circleName}"`, time: 'just now', read: false, inviteId: inv.id, circleInvite }, ...prev.slice(0, 9)]
-          })
+    if (!user?.email || !user?.id) return
+    const sub = fbSubscribeToInvites(user.email, (invites) => {
+      if (!invites?.length) return
+      invites.forEach(inv => {
+        setNotifications(prev => {
+          if (prev.some(n => n.inviteId === inv.id)) return prev
+          const safeEmailId = inv.id?.split('__')[0] || inv.id
+          const circleInvite = {
+            id:           inv.id,
+            circle_id:    inv.circleId,
+            circle_name:  inv.circleName,
+            circle_mode:  inv.circleMode,
+            inviter_name: inv.inviterName,
+            email:        inv.email,
+            safeEmailId,
+          }
+          return [{ id: Date.now() + Math.random(), text: `📩 ${inv.inviterName} invited you to "${inv.circleName}"`, time: 'just now', read: false, inviteId: inv.id, circleInvite }, ...prev.slice(0, 9)]
         })
-        sendPushNotification('FlowCircle Invite', `You have ${invites.length} pending circle invite(s)!`)
       })
-      return () => sub.unsubscribe()
+      sendPushNotification('FlowCircle Invite', `You have ${invites.length} pending circle invite(s)!`)
     })
-  }, [user?.email, sendPushNotification])
+    return () => sub.unsubscribe()
+  }, [user?.email, user?.id, sendPushNotification])
 
   // Confetti when all today's tasks done
   useEffect(() => {
@@ -645,29 +598,7 @@ export function AppProvider({ children }) {
     return () => window.removeEventListener('keydown', fn)
   }, [])
 
-  // ── Auto-refresh JWT token (on load + every 5min) ────────────────────────
-  useEffect(() => {
-    const tryRefresh = async () => {
-      try {
-        const rt = localStorage.getItem('wf_refresh_token')
-        if (!rt) return
-        const refreshToken = JSON.parse(rt)
-        // If token exists and still has > 5min, skip
-        const currentToken = load(LS.TOKEN, null)
-        if (currentToken) {
-          try { const exp = JSON.parse(atob(currentToken.split('.')[1])).exp * 1000; if (exp - Date.now() > 5 * 60 * 1000) return } catch {}
-        }
-        const res = await supabaseRefreshToken(refreshToken)
-        if (res.access_token) {
-          save(LS.TOKEN, res.access_token); setSbToken(res.access_token)
-          if (res.refresh_token) localStorage.setItem('wf_refresh_token', JSON.stringify(res.refresh_token))
-        }
-      } catch {}
-    }
-    tryRefresh() // run immediately on mount
-    const interval = setInterval(tryRefresh, 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, []) // only once on mount
+  // Firebase handles token refresh automatically — no manual refresh needed
 
   // ── Search ────────────────────────────────────────────────────────────────
   const searchResults = searchQuery.trim().length > 1
@@ -688,9 +619,6 @@ export function AppProvider({ children }) {
       // auth
       isLoggedIn, login, register, logout, deleteAccount, syncing,
       signIn, signUp, signInWithGoogle, signInWithApple,
-      sbEnabled: SUPABASE_ENABLED,
-      sbToken,
-      isSupabaseConfigured: () => SUPABASE_ENABLED,
       // nav
       page, navigate,
       isPro, isBusiness, FREE_LIMIT, canAddTask, planLimits,

@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
-import { getAuth, signInAnonymously } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey:      import.meta.env.VITE_FIREBASE_API_KEY,
@@ -18,17 +18,5 @@ if (isFirebaseConfigured()) {
   auth = getAuth(app)
 }
 
+export const googleProvider = new GoogleAuthProvider()
 export { db, auth }
-
-// Call once on app start — signs in anonymously so Firestore rules can use request.auth.uid
-export async function ensureFirebaseAuth() {
-  if (!isFirebaseConfigured() || !auth) return null
-  if (auth.currentUser) return auth.currentUser
-  try {
-    const cred = await signInAnonymously(auth)
-    return cred.user
-  } catch (e) {
-    console.warn('Firebase anon auth failed:', e.message)
-    return null
-  }
-}

@@ -2,10 +2,11 @@ import { memo, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { useLanguage } from '../context/LanguageContext'
 import { fbGetMembers, fbUpdateInviteStatus } from '../utils/firebaseCircle'
+import { isFirebaseConfigured } from '../utils/firebase'
 
 // Keyboard shortcut Ctrl+K is handled centrally in AppContext — no duplicate listener here.
 function Header({ title, subtitle }) {
-  const { user, navigate, setShowAddTask, notifications, setNotifications, setShowSearch, pushToast, setShowAIChat, requestPushPermission, syncing, sbEnabled, setPendingCircleInvite } = useApp()
+  const { user, navigate, setShowAddTask, notifications, setNotifications, setShowSearch, pushToast, setShowAIChat, requestPushPermission, syncing, setPendingCircleInvite } = useApp()
   const { t } = useLanguage()
   const [showNotifs, setShowNotifs] = useState(false)
   const [inviteModal, setInviteModal] = useState(null) // { invite, notifId, members }
@@ -99,7 +100,7 @@ function Header({ title, subtitle }) {
           </button>
 
           {/* Sync indicator */}
-          {sbEnabled && (
+          {isFirebaseConfigured() && (
             <div className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold ${syncing ? 'text-amber-500' : 'text-emerald-500'}`} title={syncing ? 'Syncing...' : 'Synced to cloud'}>
               <span className={`material-symbols-outlined text-xs ${syncing ? 'animate-spin' : ''}`}>{syncing ? 'refresh' : 'cloud_done'}</span>
             </div>
