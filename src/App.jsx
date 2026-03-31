@@ -18,6 +18,7 @@ import CheckoutPage      from './pages/CheckoutPage'
 import AdminPage         from './pages/AdminPage'
 import DownloadPage      from './pages/DownloadPage'
 import FAQPage           from './pages/FAQPage'
+import ProfilePage       from './pages/ProfilePage'
 import {
   DailyDetailPage, RoutineTemplatesPage, CalendarPage,
   AnalyticsPage, SettingsPage, ExportPage, EmptyStatesPage,
@@ -65,12 +66,13 @@ const PAGES = {
   admin:            AdminPage,
   download:         DownloadPage,
   faq:              FAQPage,
+  profile:          ProfilePage,
 }
 
 const APP_PAGES = [
   'dashboard','planner','daily','calendar','analytics',
   'settings','pomodoro','empty','notes','smart-calendar',
-  'flowcircle','faq','download',
+  'flowcircle','faq','download','profile',
 ]
 
 // ── ErrorBoundary — catches silent React crashes ──────────────────────────────

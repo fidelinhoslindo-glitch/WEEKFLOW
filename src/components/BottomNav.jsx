@@ -10,7 +10,7 @@ export default function BottomNav() {
     { id: 'planner',   icon: 'calendar_today', label: t.bottomNav.planner },
     { id: 'flowcircle',icon: 'hub',             label: t.bottomNav.circles },
     { id: 'analytics', icon: 'bar_chart',      label: t.bottomNav.stats   },
-    { id: 'settings',  icon: 'person',         label: t.bottomNav.profile },
+    { id: 'profile',   icon: 'person',         label: t.bottomNav.profile },
   ]
 
   return (

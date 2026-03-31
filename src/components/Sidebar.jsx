@@ -17,6 +17,7 @@ function Sidebar() {
     { id: 'notes',         label: t.sidebar.notes,       icon: 'sticky_note_2'    },
     { id: 'pomodoro',      label: t.sidebar.pomodoro,    icon: 'self_improvement' },
     { id: 'analytics',     label: t.sidebar.analytics,   icon: 'bar_chart'        },
+    { id: 'profile',       label: t.sidebar.profile || 'Meu Perfil', icon: 'person' },
     { id: 'settings',      label: t.sidebar.settings,    icon: 'settings'         },
     { id: 'faq',           label: t.sidebar.faq,         icon: 'help'             },
     { id: 'download',      label: t.sidebar.desktopApp,  icon: 'computer'         },
@@ -61,9 +62,14 @@ function Sidebar() {
         </div>
 
         <div className="flex items-center gap-3 px-2">
-          <div className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-sm">
+          <button
+            onClick={() => navigate('profile')}
+            className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-sm hover:bg-primary/30 transition-colors"
+            style={user.avatarColor ? { background: user.avatarColor + '33', borderColor: user.avatarColor + '66', color: user.avatarColor } : {}}
+            aria-label="Go to profile"
+          >
             {(user.name || user.email || 'U').charAt(0).toUpperCase()}
-          </div>
+          </button>
           <div className="flex-1 overflow-hidden">
             <p className="text-sm font-semibold truncate">{user.name || user.email?.split('@')[0] || t.sidebar.user}</p>
             <p className="text-xs text-slate-500">{user.plan} {t.common.plan}</p>

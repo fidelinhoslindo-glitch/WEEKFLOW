@@ -10,4 +10,5 @@ export const VALID_PAGES = [
   'landing','login','onboarding','dashboard','planner','daily','templates',
   'calendar','analytics','settings','export','empty','pomodoro','notes',
   'smart-calendar','flowcircle','timer','share','checkout','admin','download',
+  'profile',
 ]
