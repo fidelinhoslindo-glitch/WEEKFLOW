@@ -1,6 +1,6 @@
 import {
   collection, doc, getDocs, setDoc, deleteDoc,
-  writeBatch, onSnapshot, getDoc,
+  writeBatch, onSnapshot, getDoc, runTransaction,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from './firebase'
 
@@ -74,6 +74,50 @@ export async function dbSaveProfile(uid, profile) {
 }
 
 // ── Realtime tasks subscription ───────────────────────────────────────────────
+
+// ── Trial claim (limited to first 100 users) ──────────────────────────────────
+
+export async function dbClaimTrial(uid, displayName) {
+  if (!isFirebaseConfigured()) {
+    // Fallback: grant trial without counter (Firebase not configured)
+    return true
+  }
+
+  const statsRef = doc(db, 'config', 'trialStats')
+  const profileRef = doc(db, 'users', uid, 'profile', 'data')
+  const TRIAL_LIMIT = 100
+
+  let gotTrial = false
+
+  await runTransaction(db, async (tx) => {
+    const statsSnap = await tx.get(statsRef)
+    const currentCount = statsSnap.exists() ? (statsSnap.data().trialCount || 0) : 0
+
+    if (currentCount < TRIAL_LIMIT) {
+      // Slot available — grant Pro trial
+      const trialEnd = Date.now() + 7 * 24 * 60 * 60 * 1000
+      tx.set(profileRef, {
+        name: displayName,
+        plan: 'Pro',
+        trialEnd,
+        isTrialUser: true,
+        createdAt: Date.now(),
+      })
+      tx.set(statsRef, { trialCount: currentCount + 1 }, { merge: true })
+      gotTrial = true
+    } else {
+      // Limit reached — grant Free plan
+      tx.set(profileRef, {
+        name: displayName,
+        plan: 'Free',
+        createdAt: Date.now(),
+      })
+      gotTrial = false
+    }
+  })
+
+  return gotTrial
+}
 
 export function dbSubscribeToTasks(uid, onUpdate) {
   if (!isFirebaseConfigured()) return () => {}

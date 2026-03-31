@@ -5,7 +5,7 @@ import {
   fbSignIn, fbSignUp, fbSignOut, fbSignInWithGoogle,
   fbGetRedirectResult, fbOnAuthStateChanged,
 } from '../utils/firebaseAuth'
-import { dbGetTasks, dbSaveTasks, dbGetProfile, dbSaveProfile } from '../utils/firebaseDB'
+import { dbGetTasks, dbSaveTasks, dbGetProfile, dbSaveProfile, dbClaimTrial } from '../utils/firebaseDB'
 import { fbSubscribeToInvites } from '../utils/firebaseCircle'
 import { seedDemoData, DEMO_USER } from '../utils/demoData'
 
@@ -166,12 +166,18 @@ export function AppProvider({ children }) {
     let isTrialUser = false
 
     if (!profile) {
-      // First login — grant 7-day Pro trial
-      trialEnd = Date.now() + 7 * 24 * 60 * 60 * 1000
-      isTrialUser = true
-      plan = 'Pro'
-      const newProfile = { name: resolvedName, plan, trialEnd, isTrialUser }
-      try { await dbSaveProfile(fbUser.uid, newProfile) } catch {}
+      // First login — claim trial slot (limited to first 100 users)
+      try {
+        const gotTrial = await dbClaimTrial(fbUser.uid, resolvedName)
+        if (gotTrial) {
+          plan = 'Pro'
+          trialEnd = Date.now() + 7 * 24 * 60 * 60 * 1000
+          isTrialUser = true
+        }
+        // Re-read profile written by dbClaimTrial so trialEnd is accurate
+        try { profile = await dbGetProfile(fbUser.uid) } catch {}
+        if (profile) trialEnd = profile.trialEnd || trialEnd
+      } catch {}
     } else {
       plan = profile.plan || 'Free'
       trialEnd = profile.trialEnd || null
