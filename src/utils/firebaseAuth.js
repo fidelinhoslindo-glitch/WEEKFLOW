@@ -12,10 +12,14 @@ import {
 } from 'firebase/auth'
 import { auth, googleProvider, isFirebaseConfigured } from './firebase'
 
+// Temporary holder for unverified user (needed for resend after signOut)
+let _pendingVerificationUser = null
+
 // ── Sign up ───────────────────────────────────────────────────────────────────
 export async function fbSignUp(email, password) {
   if (!isFirebaseConfigured()) throw new Error('Firebase not configured')
   const cred = await createUserWithEmailAndPassword(auth, email, password)
+  _pendingVerificationUser = cred.user
   await sendEmailVerification(cred.user)
   return cred.user
 }
@@ -23,8 +27,13 @@ export async function fbSignUp(email, password) {
 // ── Resend verification email ────────────────────────────────────────────────
 export async function fbResendVerificationEmail() {
   if (!isFirebaseConfigured()) throw new Error('Firebase not configured')
-  if (!auth.currentUser) throw new Error('Not authenticated')
-  await sendEmailVerification(auth.currentUser)
+  const target = auth.currentUser || _pendingVerificationUser
+  if (!target) throw new Error('Not authenticated')
+  await sendEmailVerification(target)
+}
+
+export function fbClearPendingVerification() {
+  _pendingVerificationUser = null
 }
 
 // ── Sign in ───────────────────────────────────────────────────────────────────

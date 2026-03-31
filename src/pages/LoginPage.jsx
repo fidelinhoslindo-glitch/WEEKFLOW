@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import { useLanguage } from '../context/LanguageContext'
-import { fbSendPasswordReset, fbResendVerificationEmail } from '../utils/firebaseAuth'
+import { fbSendPasswordReset, fbResendVerificationEmail, fbClearPendingVerification } from '../utils/firebaseAuth'
 import { isFirebaseConfigured } from '../utils/firebase'
 
 const fbReady = isFirebaseConfigured()
@@ -171,7 +171,7 @@ export default function LoginPage() {
               {resendLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <span className="material-symbols-outlined text-sm">send</span>}
               Reenviar email
             </button>
-            <button onClick={() => { setView('form'); setTab('signin'); setResendMsg('') }}
+            <button onClick={() => { fbClearPendingVerification(); setView('form'); setTab('signin'); setResendMsg('') }}
               className="w-full text-sm text-slate-500 hover:text-slate-300 transition-colors py-1">
               ← Voltar ao login
             </button>
