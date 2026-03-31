@@ -323,7 +323,7 @@ export default function FlowCirclePage() {
         await fbAddMember(circle.id, {userId,name:user?.name||'You',role:'admin',avatar:user?.avatarColor||'#6467f2',status:'online',email:user?.email||'',joinedAt:new Date().toISOString()}).catch(()=>{})
         const res = await fbSendInvite({
           circleId:circle.id, circleName:circle.name, circleMode:circle.mode,
-          inviterName:user?.name||'Someone', email:inviteEmail.trim()
+          inviterName:user?.name||'Someone', inviterId:userId, email:inviteEmail.trim()
         })
         if(res.ok){
           setNotifications(prev=>[{id:Date.now(),text:`📤 Invite sent to ${inviteEmail.trim()} for "${circle.name}"`,time:'just now',read:false},...prev.slice(0,9)])

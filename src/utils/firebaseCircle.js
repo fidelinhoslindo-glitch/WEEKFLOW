@@ -81,7 +81,7 @@ export async function fbDeleteEvent(circleId, eventId) {
 
 // ── Invites (stored inside the circle, keyed by email) ───────────────────────
 
-export async function fbSendInvite({ circleId, circleName, circleMode, inviterName, email }) {
+export async function fbSendInvite({ circleId, circleName, circleMode, inviterName, inviterId, email }) {
   if (!isFirebaseConfigured()) return { ok: false, error: 'Firebase not configured' }
   try {
     const normalEmail = email.toLowerCase()
@@ -92,15 +92,20 @@ export async function fbSendInvite({ circleId, circleName, circleMode, inviterNa
       circleName,
       circleMode,
       inviterName,
+      inviterId: inviterId || null,
       email: normalEmail,
       status: 'pending',
       createdAt: new Date().toISOString(),
     }
-    // Write inside circle (source of truth) + flat invite_inbox (for listener)
-    await Promise.all([
-      setDoc(doc(db, 'circles', circleId, 'invites', safeEmail), payload),
-      setDoc(doc(db, 'invite_inbox', inboxId), { ...payload, inboxId }),
-    ])
+    // Primary write: invite inside the circle (source of truth).
+    // This is always attempted and must succeed.
+    await setDoc(doc(db, 'circles', circleId, 'invites', safeEmail), payload)
+
+    // Secondary write: flat mirror in invite_inbox for cross-circle listener queries.
+    // Best-effort — Firestore rules may restrict this path; failure does not
+    // block the invite from being recorded inside the circle.
+    setDoc(doc(db, 'invite_inbox', inboxId), { ...payload, inboxId }).catch(() => {})
+
     return { ok: true, inviteId: safeEmail }
   } catch (e) {
     return { ok: false, error: e.message }
