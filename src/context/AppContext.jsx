@@ -7,6 +7,7 @@ import {
 } from '../utils/firebaseAuth'
 import { dbGetTasks, dbSaveTasks, dbGetProfile } from '../utils/firebaseDB'
 import { fbSubscribeToInvites } from '../utils/firebaseCircle'
+import { seedDemoData, DEMO_USER } from '../utils/demoData'
 
 const AppContext = createContext(null)
 
@@ -192,6 +193,28 @@ export function AppProvider({ children }) {
   // Keep login/register aliases for any internal callers
   const login    = signIn
   const register = signUp
+
+  // ── Demo login (sem Firebase — dados locais para gravação de vídeo) ──────────
+  const loginDemo = useCallback(() => {
+    // Limpa dados anteriores
+    localStorage.removeItem(LS.TASKS)
+    localStorage.removeItem(LS.ONBOARD)
+    localStorage.removeItem(LS.WEEK)
+    localStorage.removeItem('wf_notes')
+    // Popula com dados de demo
+    const demoTasks = seedDemoData()
+    save(LS.TASKS, demoTasks)
+    setTasksState(demoTasks)
+    // Define usuário demo com plano Pro (para mostrar todas as features)
+    const demoOnboard = { goal: 'productivity', activities: ['work','gym'], wakeUp: '06:30', workStart: '09:00', workEnd: '18:00', daysOff: ['Saturday','Sunday'] }
+    save(LS.ONBOARD, demoOnboard)
+    setOnboardingDataState(demoOnboard)
+    save(LS.USER, DEMO_USER)
+    setUserState(DEMO_USER)
+    save(LS.AUTH, true)
+    setIsLoggedIn(true)
+    setPage('dashboard')
+  }, []) // eslint-disable-line
 
   const logout = async () => {
     await fbSignOut().catch(() => {})
@@ -618,7 +641,7 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       // auth
       isLoggedIn, login, register, logout, deleteAccount, syncing,
-      signIn, signUp, signInWithGoogle, signInWithApple,
+      signIn, signUp, signInWithGoogle, signInWithApple, loginDemo,
       // nav
       page, navigate,
       isPro, isBusiness, FREE_LIMIT, canAddTask, planLimits,

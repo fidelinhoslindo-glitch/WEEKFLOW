@@ -14,7 +14,7 @@ const getInitialPage = () => {
 }
 
 export default function LoginPage() {
-  const { signIn, signUp, signInWithGoogle, signInWithApple, navigate } = useApp()
+  const { signIn, signUp, signInWithGoogle, signInWithApple, navigate, loginDemo } = useApp()
   const { t } = useLanguage()
 
   const [tab,      setTab]      = useState('signin')
@@ -34,6 +34,9 @@ export default function LoginPage() {
 
   // Firebase sends a reset email with a link — no in-app reset token flow needed
   // If user clicks the link they land on Firebase's hosted reset page
+
+  // Exibir botão demo em dev ou quando query param ?demo=1 estiver presente
+  const showDemo = import.meta.env.DEV || new URLSearchParams(window.location.search).get('demo') === '1'
 
   // ── Handle Google redirect result (if redirect flow was used) ─────────────
   useEffect(() => {
@@ -165,7 +168,7 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-sm">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 animate-logo-intro">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#6467f2] to-[#8b5cf6] flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-[#6467f2]/40">
             <span className="text-white font-black text-2xl">W</span>
           </div>
@@ -303,6 +306,19 @@ export default function LoginPage() {
             </p>
           </div>
         </div>
+
+        {/* Botão demo — visível apenas em dev ou com ?demo=1 */}
+        {showDemo && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={loginDemo}
+              className="text-sm text-slate-500 hover:text-[#6467f2] transition-colors flex items-center gap-1.5 mx-auto"
+            >
+              <span className="material-symbols-outlined text-base">play_circle</span>
+              Ver demo
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
