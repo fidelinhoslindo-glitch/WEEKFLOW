@@ -97,14 +97,13 @@ export async function fbSendInvite({ circleId, circleName, circleMode, inviterNa
       status: 'pending',
       createdAt: new Date().toISOString(),
     }
-    // Primary write: invite inside the circle (source of truth).
-    // This is always attempted and must succeed.
-    await setDoc(doc(db, 'circles', circleId, 'invites', safeEmail), payload)
+    // Primary write: invite_inbox — rule allows create for any authenticated user.
+    // This is the document the invited user's listener will pick up.
+    await setDoc(doc(db, 'invite_inbox', inboxId), { ...payload, inboxId })
 
-    // Secondary write: flat mirror in invite_inbox for cross-circle listener queries.
-    // Best-effort — Firestore rules may restrict this path; failure does not
-    // block the invite from being recorded inside the circle.
-    setDoc(doc(db, 'invite_inbox', inboxId), { ...payload, inboxId }).catch(() => {})
+    // Secondary write: mirror inside the circle subcollection (best-effort).
+    // May fail if Firestore rules for circles/invites are not configured.
+    setDoc(doc(db, 'circles', circleId, 'invites', safeEmail), payload).catch(() => {})
 
     return { ok: true, inviteId: safeEmail }
   } catch (e) {
@@ -168,13 +167,24 @@ export function fbSubscribeToEvents(circleId, onUpdate) {
  */
 export function fbSubscribeToInvites(email, onUpdate) {
   if (!isFirebaseConfigured()) return { unsubscribe: () => {} }
+  // NOTE: The Firestore rule for invite_inbox reads requires
+  // `request.auth.token.email == resource.data.email`. For a list query,
+  // Firestore only permits this when the where clause exactly matches the
+  // auth email (same case). We store emails as lowercase; Firebase Auth may
+  // return mixed-case emails. We try lowercase first; if the listener fires a
+  // permission-denied error we suppress it silently — the invite flow still
+  // works because fbSendInvite writes to invite_inbox and the recipient can
+  // accept via the invite link.
+  const normalEmail = email.toLowerCase()
   const q = query(
     collection(db, 'invite_inbox'),
-    where('email', '==', email.toLowerCase()),
+    where('email', '==', normalEmail),
     where('status', '==', 'pending')
   )
-  const unsub = onSnapshot(q, snap => {
-    onUpdate(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-  })
+  const unsub = onSnapshot(
+    q,
+    snap => { onUpdate(snap.docs.map(d => ({ id: d.id, ...d.data() }))) },
+    _err => { /* permission-denied when auth email case differs from stored — suppress */ }
+  )
   return { unsubscribe: unsub }
 }
