@@ -687,6 +687,7 @@ export function AppProvider({ children }) {
       isLoggedIn, login, register, logout, deleteAccount, syncing,
       signIn, signUp, signInWithGoogle, signInWithApple,
       sbEnabled: SUPABASE_ENABLED,
+      sbToken,
       isSupabaseConfigured: () => SUPABASE_ENABLED,
       // nav
       page, navigate,

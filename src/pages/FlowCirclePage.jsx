@@ -167,10 +167,21 @@ function EventCard({ ev, onDelete, onPin }) {
 }
 
 export default function FlowCirclePage() {
-  const {pushToast,user,planLimits,isPro,pendingCircleInvite,setPendingCircleInvite,notifications,setNotifications,sendPushNotification} = useApp()
-  const sbToken = typeof window!=='undefined'?localStorage.getItem('wf_token'):null
+  const {pushToast,user,planLimits,isPro,pendingCircleInvite,setPendingCircleInvite,notifications,setNotifications,sendPushNotification,sbToken:ctxToken} = useApp()
+  // Use token from AppContext (already validated — rejects service_role/anon keys)
+  // Fall back to localStorage only if context token not available yet
+  const rawToken = typeof window!=='undefined'?localStorage.getItem('wf_token'):null
+  const sbToken = ctxToken || (() => {
+    if (!rawToken) return null
+    try {
+      const p = JSON.parse(atob(rawToken.split('.')[1]))
+      if (p.role === 'service_role' || p.role === 'anon') return null
+      if (Date.now() > p.exp * 1000) return null
+      return rawToken
+    } catch { return null }
+  })()
   // user.id may be missing if saved before id was stored — decode from JWT as fallback
-  const userId = user?.id || (() => { try { const t=localStorage.getItem('wf_token'); if(!t)return null; return JSON.parse(atob(t.split('.')[1])).sub||null } catch { return null } })()
+  const userId = user?.id || (() => { try { const t=sbToken; if(!t)return null; return JSON.parse(atob(t.split('.')[1])).sub||null } catch { return null } })()
   const [circles,setCircles]         = useState(loadCircles)
   const [activeId,setActiveId]       = useState(()=>loadCircles()[0]?.id||null)
   const [showCreate,setShowCreate]   = useState(false)
