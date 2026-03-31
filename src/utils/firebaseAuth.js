@@ -5,6 +5,7 @@ import {
   signInWithRedirect,
   getRedirectResult,
   sendPasswordResetEmail,
+  sendEmailVerification,
   updatePassword,
   signOut,
   onAuthStateChanged,
@@ -15,7 +16,15 @@ import { auth, googleProvider, isFirebaseConfigured } from './firebase'
 export async function fbSignUp(email, password) {
   if (!isFirebaseConfigured()) throw new Error('Firebase not configured')
   const cred = await createUserWithEmailAndPassword(auth, email, password)
+  await sendEmailVerification(cred.user)
   return cred.user
+}
+
+// ── Resend verification email ────────────────────────────────────────────────
+export async function fbResendVerificationEmail() {
+  if (!isFirebaseConfigured()) throw new Error('Firebase not configured')
+  if (!auth.currentUser) throw new Error('Not authenticated')
+  await sendEmailVerification(auth.currentUser)
 }
 
 // ── Sign in ───────────────────────────────────────────────────────────────────

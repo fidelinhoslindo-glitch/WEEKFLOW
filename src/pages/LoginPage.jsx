@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import { useLanguage } from '../context/LanguageContext'
-import { fbSendPasswordReset } from '../utils/firebaseAuth'
+import { fbSendPasswordReset, fbResendVerificationEmail } from '../utils/firebaseAuth'
 import { isFirebaseConfigured } from '../utils/firebase'
 
 const fbReady = isFirebaseConfigured()
@@ -14,7 +14,7 @@ const getInitialPage = () => {
 }
 
 export default function LoginPage() {
-  const { signIn, signUp, signInWithGoogle, signInWithApple, navigate, loginDemo } = useApp()
+  const { signIn, signUp, signInWithGoogle, navigate, loginDemo } = useApp()
   const { t } = useLanguage()
 
   const [tab,      setTab]      = useState('signin')
@@ -26,11 +26,13 @@ export default function LoginPage() {
   const [oauthLoading, setOauthLoading] = useState('')
   const [error,    setError]    = useState('')
 
-  // Forgot password / reset view: 'form' | 'forgot'
+  // View: 'form' | 'forgot' | 'verify-email'
   const [view,          setView]          = useState('form')
   const [forgotEmail,   setForgotEmail]   = useState('')
   const [forgotLoading, setForgotLoading] = useState(false)
   const [forgotMsg,     setForgotMsg]     = useState('')
+  const [resendMsg,     setResendMsg]     = useState('')
+  const [resendLoading, setResendLoading] = useState(false)
 
   // Firebase sends a reset email with a link — no in-app reset token flow needed
   // If user clicks the link they land on Firebase's hosted reset page
@@ -59,12 +61,18 @@ export default function LoginPage() {
     try {
       if (tab === 'signin') {
         await signIn(email.trim(), password)
+        navigate(getInitialPage())
       } else {
         await signUp(name.trim(), email.trim(), password)
+        // Show email verification screen instead of navigating to dashboard
+        setView('verify-email')
       }
-      navigate(getInitialPage())
     } catch (err) {
-      setError(err.message || t.common.unexpectedError)
+      if (err.message === 'email-not-verified') {
+        setView('verify-email')
+      } else {
+        setError(err.message || t.common.unexpectedError)
+      }
     }
     setLoading(false)
   }
@@ -84,13 +92,17 @@ export default function LoginPage() {
     setOauthLoading('')
   }
 
-  // ── Apple OAuth ───────────────────────────────────────────────────────────
-  const handleApple = async () => {
-    clearMessages()
-    setOauthLoading('apple')
-    try { await signInWithApple() }
-    catch (err) { setError(err.message || 'Apple login failed.') }
-    setOauthLoading('')
+  // ── Resend verification email ─────────────────────────────────────────────
+  const handleResend = async () => {
+    setResendLoading(true)
+    setResendMsg('')
+    try {
+      await fbResendVerificationEmail()
+      setResendMsg('Email reenviado! Verifique sua caixa de entrada.')
+    } catch (err) {
+      setResendMsg(err.message || 'Erro ao reenviar email.')
+    }
+    setResendLoading(false)
   }
 
   // ── Forgot password ───────────────────────────────────────────────────────
@@ -108,6 +120,50 @@ export default function LoginPage() {
   }
 
   const tabs = [['signin', t.login.signIn], ['signup', t.login.signUp]]
+
+  // ── VERIFY EMAIL VIEW ────────────────────────────────────────────────────
+  if (view === 'verify-email') {
+    return (
+      <div className="min-h-screen bg-[#07090f] flex items-center justify-center p-4">
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-[#6467f2] opacity-10 blur-[120px]"/>
+          <div className="absolute -bottom-32 -right-32 w-[400px] h-[400px] rounded-full bg-[#8b5cf6] opacity-10 blur-[100px]"/>
+        </div>
+        <div className="relative w-full max-w-sm">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#6467f2] to-[#8b5cf6] flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-[#6467f2]/40">
+              <span className="material-symbols-outlined text-white text-3xl">mark_email_unread</span>
+            </div>
+            <h1 className="text-white text-2xl font-black tracking-tight">Verifique seu email</h1>
+            <p className="text-slate-400 text-sm mt-2 leading-relaxed">
+              Enviamos um link de confirmação para{' '}
+              <span className="text-white font-semibold">{email}</span>.
+              <br/>Clique no link para ativar sua conta.
+            </p>
+          </div>
+          <div className="bg-[#0d0f1c] border border-white/[0.07] rounded-2xl p-6 shadow-2xl space-y-4">
+            {resendMsg && (
+              <div className={`flex items-start gap-2.5 rounded-xl px-4 py-3 ${resendMsg.startsWith('Email reenviado') ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
+                <span className={`material-symbols-outlined text-sm mt-0.5 shrink-0 ${resendMsg.startsWith('Email reenviado') ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {resendMsg.startsWith('Email reenviado') ? 'check_circle' : 'error'}
+                </span>
+                <p className={`text-sm ${resendMsg.startsWith('Email reenviado') ? 'text-emerald-300' : 'text-red-300'}`}>{resendMsg}</p>
+              </div>
+            )}
+            <button onClick={handleResend} disabled={resendLoading}
+              className="w-full py-3 bg-gradient-to-r from-[#6467f2] to-[#8b5cf6] text-white font-bold rounded-xl text-sm hover:opacity-90 transition-all shadow-lg shadow-[#6467f2]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+              {resendLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <span className="material-symbols-outlined text-sm">send</span>}
+              Reenviar email
+            </button>
+            <button onClick={() => { setView('form'); setTab('signin'); setResendMsg('') }}
+              className="w-full text-sm text-slate-500 hover:text-slate-300 transition-colors py-1">
+              ← Voltar ao login
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // ── FORGOT PASSWORD VIEW ──────────────────────────────────────────────────
   if (view === 'forgot') {
@@ -270,9 +326,9 @@ export default function LoginPage() {
           </div>
 
           {/* OAuth buttons */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="mb-4">
             <button onClick={handleGoogle} disabled={!!oauthLoading}
-              className="flex items-center justify-center gap-2 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-sm font-semibold text-white hover:bg-white/[0.09] active:scale-[0.98] transition-all disabled:opacity-40">
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-sm font-semibold text-white hover:bg-white/[0.09] active:scale-[0.98] transition-all disabled:opacity-40">
               {oauthLoading === 'google' ? (
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
               ) : (
@@ -283,18 +339,7 @@ export default function LoginPage() {
                   <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/>
                 </svg>
               )}
-              Google
-            </button>
-            <button onClick={handleApple} disabled={!!oauthLoading}
-              className="flex items-center justify-center gap-2 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-sm font-semibold text-white hover:bg-white/[0.09] active:scale-[0.98] transition-all disabled:opacity-40">
-              {oauthLoading === 'apple' ? (
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 814 1000" fill="white">
-                  <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-42.8-163.3-109.5C138.1 753.3 69.3 651.8 69.3 601.5c0-38.8 8.3-76.2 25.3-112.3 23.4-48.7 82.5-101.7 140.8-101.7 55.1 0 83.9 36.3 158.8 36.3 73.2 0 115-36.9 173.3-36.9 55.1 0 101.1 28.6 138.8 86.5zm-154.8-222.2c37-44.2 63.3-105.4 63.3-166.6 0-8.4-.6-17-2-25.4-60.2 2.2-131.2 40.2-173.9 91.6-33.3 38.8-64.1 99.5-64.1 161.5 0 9 1.3 18 2 20.7 3.9.6 10.3 1.3 16.6 1.3 54.5 0 121.5-36.5 158.1-82.9z"/>
-                </svg>
-              )}
-              Apple
+              Continuar com Google
             </button>
           </div>
 

@@ -171,6 +171,11 @@ export function AppProvider({ children }) {
 
   const signIn = async (email, password) => {
     const fbUser = await fbSignIn(email, password)
+    // Block unverified email/password accounts — Google accounts are always verified
+    if (!fbUser.emailVerified && fbUser.providerData[0]?.providerId === 'password') {
+      await fbSignOut()
+      throw new Error('email-not-verified')
+    }
     await _finishLogin(fbUser)
   }
 
