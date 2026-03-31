@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@stripe/stripe-js": "^8.11.0",
+    "html2canvas": "^1.4.1",
     "@supabase/supabase-js": "^2.43.0",
     "electron-updater": "^6.8.3",
     "firebase": "^12.11.0",

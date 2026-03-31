@@ -5,12 +5,14 @@ import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { AnimatedStat } from '../hooks/useAnimatedStats'
 import { downloadICS } from '../utils/googleCalendar'
+import WeeklySummaryWidget from '../components/WeeklySummaryWidget'
 
 export default function DashboardPage() {
   const { tasks, navigate, setShowAddTask, weekDays, getTasksForDay, completionRate, categoryColors, user, setShowAIChat } = useApp()
   const { t } = useLanguage()
   const [timer, setTimer] = useState(25 * 60)
   const [timerRunning, setTimerRunning] = useState(false)
+  const [showSummary, setShowSummary] = useState(false)
   const intervalRef = useRef(null)
 
   useEffect(() => {
@@ -66,11 +68,16 @@ export default function DashboardPage() {
               className="hidden sm:flex px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
               <span className="material-symbols-outlined text-base text-emerald-500">calendar_month</span> {t.dashboard.exportCalendar}
             </button>
+            <button onClick={() => setShowSummary(true)}
+              className="hidden sm:flex px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+              <span className="material-symbols-outlined text-base text-purple-500">auto_awesome</span> Resumo semanal
+            </button>
             <button onClick={() => setShowAddTask(true)}
               className="px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-primary/25 hover:opacity-90 transition-opacity">
               <span className="material-symbols-outlined text-base">add</span> {t.dashboard.addTask}
             </button>
           </div>
+          {showSummary && <WeeklySummaryWidget onClose={() => setShowSummary(false)} />}
 
           {/* Empty state when no tasks */}
           {tasks.length === 0 && (
