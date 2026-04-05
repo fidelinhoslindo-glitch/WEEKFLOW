@@ -11,7 +11,6 @@ function Sidebar() {
   const navItems = [
     { id: 'dashboard',     label: t.sidebar.dashboard,   icon: 'dashboard'        },
     { id: 'planner',       label: t.sidebar.planner,     icon: 'calendar_today'   },
-    { id: 'daily',         label: t.sidebar.today,       icon: 'today'            },
     { id: 'smart-calendar',label: t.sidebar.smartCal,    icon: 'auto_awesome'     },
     { id: 'flowcircle',    label: t.sidebar.flowcircle,  icon: 'hub'              },
     { id: 'notes',         label: t.sidebar.notes,       icon: 'sticky_note_2'    },

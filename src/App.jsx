@@ -49,7 +49,7 @@ const PAGES = {
   onboarding:       OnboardingPage,
   dashboard:        DashboardPage,
   planner:          WeeklyPlannerPage,
-  daily:            DailyDetailPage,
+  daily:            WeeklyPlannerPage,
   templates:        RoutineTemplatesPage,
   calendar:         CalendarPage,
   analytics:        AnalyticsPage,
