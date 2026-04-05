@@ -213,7 +213,10 @@ export function AppProvider({ children }) {
     save(LS.USER, u); setUserState(u)
     save(LS.AUTH, true); setIsLoggedIn(true)
     await syncFromCloud(fbUser.uid)
-    const doneOnboard = load('wf_onboard_done', false) || Object.keys(load(LS.ONBOARD, {})).length > 0
+    // Check onboardingDone from Firestore profile (source of truth) — localStorage is just a cache
+    const cloudOnboardDone = profile?.onboardingDone === true
+    if (cloudOnboardDone) save('wf_onboard_done', true)
+    const doneOnboard = cloudOnboardDone || load('wf_onboard_done', false) || Object.keys(load(LS.ONBOARD, {})).length > 0
     setPage(doneOnboard ? 'dashboard' : 'onboarding')
     // Register service worker so push/background notifications work
     registerServiceWorker().catch(() => {})
@@ -370,7 +373,14 @@ export function AppProvider({ children }) {
 
   // ── Onboarding ────────────────────────────────────────────────────────────
   const [onboardingData, setOnboardingDataState] = useState(() => load(LS.ONBOARD, {}))
-  const setOnboardingData = (data) => { save(LS.ONBOARD, data); save('wf_onboard_done', true); setOnboardingDataState(data); const gen = genOnboardingTasks(data); if (gen.length) persistTasks(() => gen); setPage('planner') }
+  const setOnboardingData = (data) => {
+    save(LS.ONBOARD, data); save('wf_onboard_done', true); setOnboardingDataState(data)
+    const gen = genOnboardingTasks(data); if (gen.length) persistTasks(() => gen)
+    // Persist onboardingDone to Firestore so it survives localStorage clears / other devices
+    const uid = load(LS.USER, null)?.id
+    if (uid) dbSaveProfile(uid, { onboardingDone: true }).catch(() => {})
+    setPage('planner')
+  }
 
   // ── Week navigation ───────────────────────────────────────────────────────
   const [weekOffset, setWeekOffset] = useState(() => load(LS.WEEK, 0))
