@@ -136,7 +136,19 @@ export function AppProvider({ children }) {
       if (!fbUser.emailVerified && fbUser.providerData[0]?.providerId === 'password') return
       // Already logged in via listener — sync user state
       const existing = load(LS.USER, null)
-      if (existing?.id === fbUser.uid) return
+      if (existing?.id === fbUser.uid) {
+        // If localStorage doesn't have onboarding done, re-check Firestore (e.g. after F5 / cache clear)
+        if (!load('wf_onboard_done', false)) {
+          try {
+            const profile = await dbGetProfile(fbUser.uid)
+            if (profile?.onboardingDone) {
+              save('wf_onboard_done', true)
+              setPage('dashboard')
+            }
+          } catch {}
+        }
+        return
+      }
       const u = {
         id: fbUser.uid,
         email: fbUser.email || '',
